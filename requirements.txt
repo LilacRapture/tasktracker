@@ -1,0 +1,15 @@
+# Core
+Django==5.0.6
+djangorestframework==3.15.2
+
+# Auth
+djangorestframework-simplejwt==5.3.1
+
+# Database
+psycopg2-binary==2.9.12
+
+# Config
+python-decouple==3.8
+
+# Dev / Phase 2
+# drf-spectacular==0.27.2   # uncomment when adding Swagger docs
