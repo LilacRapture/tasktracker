@@ -4,7 +4,7 @@
 
 TaskTracker is an API-only backend that provides:
 1. Custom authentication (JWT-based, stateless)
-2. Custom RBAC (role-based access control) with its own DB schema
+2. Custom RBAC (ownership-aware access rules) with its own DB schema
 3. Task and project management as the business domain
 
 ## Tech Stack
@@ -16,7 +16,7 @@ TaskTracker is an API-only backend that provides:
 | Auth tokens | djangorestframework-simplejwt |
 | Database | PostgreSQL 16 |
 | Config | python-decouple (.env) |
-| Containerization | Docker + docker-compose |
+| Containerization | Docker + docker-compose (Phase 2 — not set up yet) |
 | API docs | drf-spectacular (Phase 2) |
 
 ## Project Layout
@@ -31,7 +31,7 @@ tasktracker/
 │
 ├── apps/
 │   ├── users/               # Custom User model, profile endpoints
-│   │   ├── models.py        # User (AbstractBaseUser)
+│   │   ├── models.py        # User (AbstractBaseUser + PermissionsMixin for admin)
 │   │   ├── managers.py      # UserManager
 │   │   ├── serializers.py
 │   │   ├── views.py         # Profile CRUD, soft delete
@@ -44,10 +44,10 @@ tasktracker/
 │   │   └── urls.py
 │   │
 │   ├── rbac/                # Role-based access control
-│   │   ├── models.py        # Role, Permission, RolePermission, UserRole
-│   │   ├── permissions.py   # DRF permission class (RBACPermission)
+│   │   ├── models.py        # Role, AccessRule, UserRole
+│   │   ├── permissions.py   # RBACPermission + check_access()
 │   │   ├── middleware.py    # Optional: attach user roles to request
-│   │   ├── views.py         # Admin API to manage roles/permissions
+│   │   ├── views.py         # Admin API: roles, access rules
 │   │   ├── serializers.py
 │   │   └── urls.py
 │   │
@@ -64,13 +64,13 @@ tasktracker/
 ├── docs/
 │   ├── architecture.md      # This file
 │   ├── decisions.md         # ADR log
-│   ├── rbac-schema.md       # RBAC DB schema description
+│   ├── rbac-schema.md       # RBAC DB schema (canonical)
 │   └── api.md               # Endpoint reference
 │
 ├── AGENTS.md                # AI agent instructions
-├── .cursor/rules/project.mdc
+├── .cursor/rules/project.mdc  # Cursor IDE rules (see AGENTS.md)
 ├── .env.example
-├── docker-compose.yml
+├── docker-compose.yml       # Phase 2 (Dockerfile not added yet)
 └── requirements.txt
 ```
 
@@ -88,8 +88,8 @@ DRF View
     ├── IsAuthenticated (SimpleJWT validates Bearer token)
     │       └── 401 if token missing/invalid
     │
-    ├── RBACPermission (custom, checks Role→Permission chain)
-    │       └── 403 if user lacks required permission
+    ├── RBACPermission (check_access: resource + action, optional owner)
+    │       └── 403 if user lacks required access
     │
     └── View logic → Serializer → Response
 ```
@@ -106,36 +106,50 @@ All other endpoints:
   Header: Authorization: Bearer <access_token>
 ```
 
+Django's session middleware remains enabled for `/admin/` only. API views use JWT, not session cookies.
+
 ## RBAC Flow
 
-```
-User ──has──► UserRole ──points to──► Role
-                                        │
-                                        └──has──► RolePermission ──points to──► Permission
-                                                                                    │
-                                                                          resource: "task"
-                                                                          action:   "read"
+See `docs/rbac-schema.md` for the full algorithm and seed data.
 
-On each request:
-  1. Get user from JWT
-  2. Get user's roles via UserRole
-  3. Get permissions for those roles via RolePermission
-  4. Check if required permission (resource:action) is in the set
+```
+User ──has──► UserRole ──► Role ──has──► AccessRule
+                                              │
+                              resource: "task"
+                              can_read        │ ← read own objects
+                              can_read_all    │ ← read any object
+                              can_create      │
+                              can_update      │ ← update own
+                              can_update_all  │
+                              can_delete      │
+                              can_delete_all  │
+
+On each protected request:
+  1. Get user from JWT (must be is_active=True)
+  2. Collect roles via UserRole
+  3. Load AccessRule rows for those roles and the view's resource
+  4. Run check_access(resource, action, obj_owner_id)
   5. Allow or return 403
+```
+
+Views declare requirements with class attributes:
+
+```python
+rbac_resource = "task"
+rbac_action = "read"   # read | create | update | delete
 ```
 
 ## Database Schema (high level)
 
-See `docs/rbac-schema.md` for full RBAC schema with field types.
+See `docs/rbac-schema.md` for full RBAC field types and seed data.
 
 **Users domain:**
 - `users_user` — custom user table
 
 **RBAC domain:**
 - `rbac_role`
-- `rbac_permission`
-- `rbac_rolepermission` (M2M)
-- `rbac_userrole` (M2M)
+- `rbac_accessrule`
+- `rbac_userrole`
 
 **Business domain (Phase 2):**
 - `tasks_task`

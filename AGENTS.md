@@ -10,7 +10,7 @@
 **Name:** TaskTracker  
 **Purpose:** Portfolio project + test assignment  
 **What it is:** A task/project management backend with a custom authentication and RBAC (role-based access control) system.  
-**Stack:** Django 5, Django REST Framework, PostgreSQL, SimpleJWT, Docker
+**Stack:** Django 5, Django REST Framework, PostgreSQL, SimpleJWT
 
 ---
 
@@ -18,9 +18,9 @@
 
 **Phase 1 — Test Assignment (active)**
 - Custom auth system (register, login, logout, soft delete)
-- Custom RBAC (roles, permissions, resources — NOT django.contrib.auth groups/permissions)
+- Custom RBAC (Role, AccessRule, UserRole — see `docs/rbac-schema.md`)
 - Mock views for business objects (tasks, projects)
-- DRF API for admin to manage roles/permissions
+- DRF API for admin to manage roles and access rules
 
 **Phase 2 — Portfolio Extension (after Phase 1)**
 - Real Task and Project models with full CRUD
@@ -33,16 +33,19 @@
 ## Architecture Rules (always follow these)
 
 1. **Custom User model only.** Never use `django.contrib.auth.models.User`. Our user is in `apps/users/models.py` extending `AbstractBaseUser`.
-2. **Custom RBAC only.** Never use Django's built-in `Permission` or `Group` models for access control. Our system lives in `apps/rbac/`.
-3. **JWT auth.** Sessions are disabled. Auth via `Authorization: Bearer <token>` header using `djangorestframework-simplejwt`.
+2. **Custom RBAC only.** Never use Django's built-in `Permission` or `Group` for API access control. Our system lives in `apps/rbac/` (`Role`, `AccessRule`, `UserRole`). The User model may use `PermissionsMixin` **only** so Django admin works (`is_superuser`, `is_staff`); do not call `user.has_perm()` for API authorization — use `check_access()` / `RBACPermission` instead.
+3. **JWT auth for the API.** Clients authenticate with `Authorization: Bearer <token>` via `djangorestframework-simplejwt`. DRF must not use session authentication on API views. Django's session middleware may remain for the built-in admin site only.
 4. **App separation.** Each Django app has a single responsibility:
    - `users` — User model, profile CRUD
    - `auth_core` — login, logout, register, token endpoints
-   - `rbac` — Role, Permission, UserRole models + enforcement logic
+   - `rbac` — Role, AccessRule, UserRole models + enforcement logic
    - `tasks` — Task business logic (Phase 2, mock in Phase 1)
    - `projects` — Project business logic (Phase 2, mock in Phase 1)
 5. **Config lives in `config/`.** Not in any app. `settings.py`, `urls.py`, `wsgi.py` are all there.
 6. **Env vars for secrets.** Never hardcode DB credentials, secret keys, or JWT secrets. Use `.env` + `python-decouple`.
+7. **Python 3.12.** Pinned in `.python-version`; match this version locally and in CI when added.
+
+Cursor-specific reminders live in `.cursor/rules/project.mdc` (summary only — `AGENTS.md` remains the full spec).
 
 ---
 
@@ -50,29 +53,30 @@
 
 See `docs/decisions.md` for full ADR history.  
 Short version:
-- AbstractBaseUser over AbstractUser — more control, no unused fields
-- JWT over sessions — stateless, better for API-first
-- Custom permission tables over Django built-in — requirement + more flexible
+- AbstractBaseUser + PermissionsMixin (admin only) — control over fields, admin compatibility
+- JWT over sessions for API — stateless, better for API-first
+- AccessRule-based RBAC — ownership-aware rules per role per resource (`docs/rbac-schema.md`)
 - Soft delete via `is_active=False` — data retention, audit trail
 
 ---
 
 ## RBAC System Summary
 
-See `docs/rbac-schema.md` for full schema.  
+**Canonical spec:** `docs/rbac-schema.md` — implement exactly as documented there.
+
 Short version:
-- `Role` — named role (admin, manager, developer, viewer)
-- `Permission` — a resource+action pair (e.g. task:read, project:delete)
-- `RolePermission` — which permissions a role has
+- `Role` — named role (`admin`, `manager`, `developer`, `viewer`)
+- `AccessRule` — one row per role per resource; boolean flags (`can_read`, `can_read_all`, `can_create`, etc.) with optional ownership checks
 - `UserRole` — which roles a user has
-- Custom DRF permission class in `apps/rbac/permissions.py` checks this chain on every request
+- `check_access(user, resource, action, obj_owner_id=None)` — core check (see rbac-schema)
+- `RBACPermission` in `apps/rbac/permissions.py` — DRF class; views set `rbac_resource` and `rbac_action`
 
 ---
 
 ## HTTP Error Conventions
 
 - **401 Unauthorized** — token missing or invalid → user not identified
-- **403 Forbidden** — user identified but lacks permission for this resource+action
+- **403 Forbidden** — user identified but lacks required resource+action access
 - Never return 404 when the real reason is 403 (do not leak resource existence)
 
 ---
@@ -100,10 +104,18 @@ Short version:
 ## Project Status
 
 ### Done
-- [ ] Project structure scaffolded
+- [x] Project structure scaffolded
+- [x] Custom User model (model, manager, admin, initial migration)
 
 ### In Progress
-- [ ] Custom User model
+- [ ] Auth endpoints (register, login, logout, refresh)
+- [ ] RBAC models + `RBACPermission` + seed command
+- [ ] User profile endpoints
+- [ ] RBAC admin API + mock task/project views
+
+### Later (Phase 2)
+- [ ] Docker + deploy (`docker-compose.yml` exists but is not configured yet)
+- [ ] Real Task/Project CRUD, tests, Swagger
 
 ### Open Questions
 - Nothing yet

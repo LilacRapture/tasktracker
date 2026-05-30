@@ -10,22 +10,22 @@ class User(AbstractBaseUser, PermissionsMixin):
     """
     Custom User model. Email is the login identifier, not username.
 
-    Fields follow the test assignment requirement:
-      - first_name, last_name, middle_name (отчество)
+    Fields according to the test assignment requirement:
+      - first_name, last_name, middle_name
       - email (unique login)
       - password (stored as hash via AbstractBaseUser)
       - is_active — False means soft-deleted: user cannot log in,
         but the record is preserved in the DB
 
-    AbstractBaseUser gives us:
+    AbstractBaseUser provides:
       - password field + set_password() / check_password()
       - last_login field
       - is_active field
 
-    PermissionsMixin gives us:
+    PermissionsMixin provides:
       - is_superuser, groups, user_permissions
       - has_perm(), has_module_perms() — used only by Django admin,
-        NOT used by our custom RBAC system
+        NOT used by the custom RBAC system
     """
 
     email = models.EmailField(unique=True, db_index=True)

@@ -26,3 +26,8 @@ Thumbs.db
 # IDE
 .idea/
 *.swp
+
+# Cursor — ignore local IDE state; project rules in .cursor/rules/ are tracked
+.cursor/*
+!.cursor/rules/
+!.cursor/rules/**

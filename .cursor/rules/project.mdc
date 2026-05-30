@@ -1,0 +1,25 @@
+---
+description: TaskTracker project conventions — read before editing
+alwaysApply: true
+---
+
+# TaskTracker
+
+**Full instructions:** [AGENTS.md](../../AGENTS.md)  
+**RBAC spec (canonical):** [docs/rbac-schema.md](../../docs/rbac-schema.md)
+
+## Must follow
+
+- Custom User in `apps/users/models.py` — never `django.contrib.auth.models.User`
+- API auth: JWT only (`Authorization: Bearer`). Do not use session auth on DRF views
+- API RBAC: `Role`, `AccessRule`, `UserRole` + `check_access()` — never Django `Permission`/`Group` for API access
+- `PermissionsMixin` on User is for Django admin only
+- Views declare `rbac_resource` and `rbac_action`; enforcement via `RBACPermission`
+- Secrets in `.env` via python-decouple — never hardcode
+- No business logic in views; no manual migration edits
+
+## Docs to update when changing behavior
+
+- Endpoints → `docs/api.md`
+- RBAC schema or seed data → `docs/rbac-schema.md`
+- Non-obvious decisions → `docs/decisions.md`

@@ -1,8 +1,11 @@
 # RBAC Schema — TaskTracker
 
+> **Canonical RBAC spec.** All other docs (`AGENTS.md`, `architecture.md`, `api.md`, ADRs) follow this file.
+> Implement models, `check_access()`, `RBACPermission`, and seed data exactly as described here.
+
 ## Core Idea
 
-Access control is **ownership-aware**: some permissions apply only to objects
+Access control is **ownership-aware**: some actions apply only to objects
 the user created themselves (`owner_id = user.id`), others apply to all objects
 regardless of ownership.
 
@@ -54,7 +57,7 @@ Which roles a user has. Many-to-many with audit fields.
 
 ### AccessRule
 
-One row = one role's permissions on one resource.
+One row = one role's access rules on one resource.
 A role can have at most one `AccessRule` per resource (unique together).
 
 | Field | Type | Default | Meaning |
@@ -141,7 +144,10 @@ A role can have at most one `AccessRule` per resource (unique together).
 
 ---
 
-## Permission Check Algorithm
+## Access check algorithm (`check_access`)
+
+Evaluates the caller's **AccessRule** rows for the requested `resource` and `action`.
+Maps actions to boolean flags: `read` → `can_read` / `can_read_all`, etc.
 
 ```python
 def check_access(
@@ -151,11 +157,11 @@ def check_access(
     obj_owner_id: int | None = None,   # owner of the object being accessed
 ) -> bool:
     """
-    Returns True if user may perform action on resource.
+    Returns True if any of the user's roles grants the action on resource
+    via AccessRule flags.
 
-    For read/update/delete: first checks the _all variant.
-    If not, checks the plain variant only when obj_owner_id == user.id.
-    create has no ownership concept — only can_create matters.
+    For read/update/delete: checks can_{action}_all first, then can_{action}
+    when obj_owner_id == user.id. create uses only can_create.
     """
     if not user.is_active:
         return False
@@ -175,18 +181,18 @@ def check_access(
     all_field = f"can_{action}_all"   # e.g. "can_read_all"
     own_field  = f"can_{action}"      # e.g. "can_read"
 
-    # Has permission on ALL objects of this resource
+    # Global access: can_{action}_all on this resource
     if rules.filter(**{all_field: True}).exists():
         return True
 
-    # Has permission only on own objects
+    # Own-object access: can_{action} when caller owns the object
     if obj_owner_id is not None and obj_owner_id == user.id:
         return rules.filter(**{own_field: True}).exists()
 
     return False
 ```
 
-This runs inside the custom DRF `RBACPermission` class in `apps/rbac/permissions.py`.
+Wrap this in the DRF `RBACPermission` class in `apps/rbac/permissions.py`.
 
 ---
 
@@ -203,12 +209,13 @@ class TaskDetailView(APIView):
 
 ## Admin API Endpoints
 
-Only accessible to users whose role has `access_rule` resource permissions:
+Only accessible to users with the required **AccessRule** flags on the `role` or `access_rule` resource:
 
 ```
 # Roles
 GET    /api/rbac/roles/
 POST   /api/rbac/roles/
+GET    /api/rbac/roles/{id}/
 PATCH  /api/rbac/roles/{id}/
 DELETE /api/rbac/roles/{id}/
 
