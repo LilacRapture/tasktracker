@@ -10,7 +10,7 @@
 **Name:** TaskTracker  
 **Purpose:** Portfolio project + test assignment  
 **What it is:** A task/project management backend with a custom authentication and RBAC (role-based access control) system.  
-**Stack:** Django 5, Django REST Framework, PostgreSQL, SimpleJWT
+**Stack:** Python 3.12, Django 5, Django REST Framework, PostgreSQL, SimpleJWT
 
 ---
 
@@ -43,7 +43,7 @@
    - `projects` — Project business logic (Phase 2, mock in Phase 1)
 5. **Config lives in `config/`.** Not in any app. `settings.py`, `urls.py`, `wsgi.py` are all there.
 6. **Env vars for secrets.** Never hardcode DB credentials, secret keys, or JWT secrets. Use `.env` + `python-decouple`.
-7. **Python 3.12.** Pinned in `.python-version`; match this version locally and in CI when added.
+7. **Python 3.12 only.** Pinned in `.python-version` and `pyproject.toml` (`requires-python = ">=3.12,<3.13"`). Do not use 3.13+ — Django admin issues were seen on 3.14. Match 3.12 locally and in CI/Docker when added.
 
 Cursor-specific reminders live in `.cursor/rules/project.mdc` (summary only — `AGENTS.md` remains the full spec).
 
@@ -106,12 +106,13 @@ Short version:
 ### Done
 - [x] Project structure scaffolded
 - [x] Custom User model (model, manager, admin, initial migration)
+- [x] Auth endpoints (register, login, logout, refresh)
+- [x] RBAC models, `seed_roles`, `check_access()`, `RBACPermission`
+- [x] User profile endpoints (`/users/me/`, list, detail)
+- [x] RBAC admin API (roles, access rules, user role assignment)
 
 ### In Progress
-- [ ] Auth endpoints (register, login, logout, refresh)
-- [ ] RBAC models + `RBACPermission` + seed command
-- [ ] User profile endpoints
-- [ ] RBAC admin API + mock task/project views
+- [ ] Mock task/project views (Phase 1 — last item)
 
 ### Later (Phase 2)
 - [ ] Docker + deploy (`docker-compose.yml` exists but is not configured yet)

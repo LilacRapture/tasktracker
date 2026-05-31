@@ -97,6 +97,26 @@
 
 ---
 
+## ADR-006 — Python 3.12 Version Pin
+
+**Date:** 2026-05-31  
+**Status:** Accepted
+
+**Decision:** Standardize on Python 3.12.x for local dev, CI, and future Docker. Pin via `.python-version` and `pyproject.toml` (`requires-python = ">=3.12,<3.13"`).
+
+**Context:** Development on Python 3.14 caused problems with Django admin forms. Django 5.0.x and the current dependency set are validated on 3.12 for this project.
+
+**Alternatives considered:**
+- Python 3.14 — admin issues; too bleeding-edge for stable portfolio work
+- Unpinned “latest Python” — inconsistent environments across machines
+
+**Consequences:**
+- Recreate virtualenv with `python3.12` after clone or upgrade
+- Phase 2 Docker image should use `python:3.12-slim` (or similar)
+- Upgrade to 3.13+ only after Django/deps explicitly support it and admin is verified
+
+---
+
 ## Template for new ADRs
 
 ```

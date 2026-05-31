@@ -1,0 +1,6 @@
+[project]
+name = "tasktracker"
+requires-python = ">=3.12,<3.13"
+
+[tool.ruff]
+# Placeholder for Phase 2 lint config; version pin lives in requires-python above.

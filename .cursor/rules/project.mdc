@@ -16,6 +16,7 @@ alwaysApply: true
 - `PermissionsMixin` on User is for Django admin only
 - Views declare `rbac_resource` and `rbac_action`; enforcement via `RBACPermission`
 - Secrets in `.env` via python-decouple — never hardcode
+- Python **3.12** only (`.python-version`, `pyproject.toml`) — not 3.13+
 - No business logic in views; no manual migration edits
 
 ## Docs to update when changing behavior

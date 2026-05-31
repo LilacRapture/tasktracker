@@ -2,7 +2,7 @@
 
 API backend for task/project management with custom JWT authentication and ownership-aware RBAC.
 
-**Phase 1 (current):** auth, RBAC, mock task/project endpoints.  
+**Phase 1 (current):** auth, RBAC admin API, user profiles — mock task/project endpoints remaining.  
 **Phase 2:** real models, tests, Swagger, Docker deploy.
 
 ## Stack
@@ -13,19 +13,23 @@ API backend for task/project management with custom JWT authentication and owner
 
 ## Local setup
 
+Requires **Python 3.12** (see `.python-version` and `pyproject.toml`). Use 3.12 explicitly — **not 3.13 or 3.14** (Django admin form issues on newer versions).
+
 ```bash
-python -m venv .venv
+python3.12 -m venv .venv    # or: pyenv install 3.12 && pyenv local 3.12
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
+python --version            # should print 3.12.x
 pip install -r requirements.txt
 cp .env.example .env        # edit SECRET_KEY and DB_* as needed
 ```
 
-Requires **Python 3.12** (see `.python-version`). Use `pyenv local` or your tool of choice if needed.
+If you previously used another Python version, delete `.venv` and recreate it with 3.12.
 
 Create the database (PostgreSQL must be running), then:
 
 ```bash
 python manage.py migrate
+python manage.py seed_roles
 python manage.py createsuperuser
 python manage.py runserver
 ```

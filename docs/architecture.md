@@ -69,6 +69,8 @@ tasktracker/
 │
 ├── AGENTS.md                # AI agent instructions
 ├── .cursor/rules/project.mdc  # Cursor IDE rules (see AGENTS.md)
+├── .python-version          # pyenv / local Python pin (3.12)
+├── pyproject.toml           # requires-python pin (3.12.x)
 ├── .env.example
 ├── docker-compose.yml       # Phase 2 (Dockerfile not added yet)
 └── requirements.txt
