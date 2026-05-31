@@ -16,13 +16,16 @@
 
 ## Current Phase
 
-**Phase 1 — Test Assignment (active)**
-- Custom auth system (register, login, logout, soft delete)
-- Custom RBAC (Role, AccessRule, UserRole — see `docs/rbac-schema.md`)
-- Mock views for business objects (tasks, projects)
-- DRF API for admin to manage roles and access rules
+**Phase 1 — Test Assignment (complete)**
 
-**Phase 2 — Portfolio Extension (after Phase 1)**
+Delivered:
+- Custom auth (register, login, logout, refresh, soft delete)
+- Custom RBAC (`Role`, `AccessRule`, `UserRole`, `check_access()`, `RBACPermission`, `seed_roles`)
+- User API (`/users/me/`, list, detail)
+- RBAC admin API (roles, access rules, user role assignment)
+- Mock task/project endpoints with RBAC enforcement
+
+**Phase 2 — Portfolio Extension (next)**
 - Real Task and Project models with full CRUD
 - Filtering, pagination, search
 - Tests, Swagger docs (drf-spectacular)
@@ -39,8 +42,8 @@
    - `users` — User model, profile CRUD
    - `auth_core` — login, logout, register, token endpoints
    - `rbac` — Role, AccessRule, UserRole models + enforcement logic
-   - `tasks` — Task business logic (Phase 2, mock in Phase 1)
-   - `projects` — Project business logic (Phase 2, mock in Phase 1)
+   - `tasks` — mock list/create (Phase 1); real CRUD (Phase 2)
+   - `projects` — mock list/create (Phase 1); real CRUD (Phase 2)
 5. **Config lives in `config/`.** Not in any app. `settings.py`, `urls.py`, `wsgi.py` are all there.
 6. **Env vars for secrets.** Never hardcode DB credentials, secret keys, or JWT secrets. Use `.env` + `python-decouple`.
 7. **Python 3.12 only.** Pinned in `.python-version` and `pyproject.toml` (`requires-python = ">=3.12,<3.13"`). Do not use 3.13+ — Django admin issues were seen on 3.14. Match 3.12 locally and in CI/Docker when added.
@@ -75,9 +78,12 @@ Short version:
 
 ## HTTP Error Conventions
 
-- **401 Unauthorized** — token missing or invalid → user not identified
-- **403 Forbidden** — user identified but lacks required resource+action access
-- Never return 404 when the real reason is 403 (do not leak resource existence)
+- **401 Unauthorized** — token missing or invalid → user not identified (DRF/JWT default: `{"detail": "..."}`)
+- **403 Forbidden** — user identified but lacks required access → `RBACPermission` sets `detail` like `"Permission denied. Required: task:read"`
+- **400 Bad Request** — validation errors → DRF field errors dict or `{"detail": "..."}`
+- Never return 404 when the real reason is 403 on **business resources** (do not leak existence). Admin/RBAC lookup 404s for missing IDs are acceptable in Phase 1.
+
+See `docs/api.md` for response shapes.
 
 ---
 
@@ -103,20 +109,20 @@ Short version:
 
 ## Project Status
 
-### Done
+### Phase 1 — Done
 - [x] Project structure scaffolded
 - [x] Custom User model (model, manager, admin, initial migration)
 - [x] Auth endpoints (register, login, logout, refresh)
 - [x] RBAC models, `seed_roles`, `check_access()`, `RBACPermission`
-- [x] User profile endpoints (`/users/me/`, list, detail)
+- [x] User profile endpoints (`/users/me/`, list, detail, soft delete)
 - [x] RBAC admin API (roles, access rules, user role assignment)
+- [x] Mock task/project views with RBAC
 
-### In Progress
-- [ ] Mock task/project views (Phase 1 — last item)
-
-### Later (Phase 2)
+### Phase 2 — Next
+- [ ] Real Task/Project models and full CRUD
+- [ ] Filtering, pagination, search
+- [ ] Tests, Swagger (drf-spectacular)
 - [ ] Docker + deploy (`docker-compose.yml` exists but is not configured yet)
-- [ ] Real Task/Project CRUD, tests, Swagger
 
 ### Open Questions
 - Nothing yet

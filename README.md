@@ -2,8 +2,8 @@
 
 API backend for task/project management with custom JWT authentication and ownership-aware RBAC.
 
-**Phase 1 (current):** auth, RBAC admin API, user profiles — mock task/project endpoints remaining.  
-**Phase 2:** real models, tests, Swagger, Docker deploy.
+**Phase 1:** complete — custom auth, RBAC, user API, mock tasks/projects.  
+**Phase 2 (next):** real models, tests, Swagger, Docker deploy.
 
 ## Stack
 

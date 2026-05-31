@@ -11,7 +11,7 @@ TaskTracker is an API-only backend that provides:
 
 | Layer | Technology |
 |-------|-----------|
-| Language | Python 3.12 |
+| Language | Python 3.12 (pinned; see `.python-version`, `pyproject.toml`) |
 | Framework | Django 5 + Django REST Framework |
 | Auth tokens | djangorestframework-simplejwt |
 | Database | PostgreSQL 16 |

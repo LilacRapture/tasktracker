@@ -13,10 +13,25 @@ Auth header (all protected routes): `Authorization: Bearer <access_token>`
 
 | Method | Endpoint | Auth | RBAC | Description |
 |--------|----------|------|------|-------------|
-| POST | `/auth/register/` | public | — | Register new user |
-| POST | `/auth/login/` | public | — | Login, returns JWT pair |
-| POST | `/auth/logout/` | bearer | — | Blacklist refresh token |
-| POST | `/auth/refresh/` | public | — | Get new access token |
+| POST | `/auth/register/` | public | — | Register; returns user + JWT pair (201) |
+| POST | `/auth/login/` | public | — | Login; returns user + JWT pair (200) |
+| POST | `/auth/logout/` | bearer | — | Blacklist refresh token (body: `{"refresh": "..."}`) |
+| POST | `/auth/refresh/` | public | — | New access token (SimpleJWT; body: `{"refresh": "..."}`) |
+
+**Register / login success (shape):**
+
+```json
+{
+  "user": {
+    "id": 1,
+    "email": "user@example.com",
+    "full_name": "Last First",
+    "created_at": "2026-05-31T12:00:00Z"
+  },
+  "access": "<access_token>",
+  "refresh": "<refresh_token>"
+}
+```
 
 ---
 
@@ -25,15 +40,15 @@ Auth header (all protected routes): `Authorization: Bearer <access_token>`
 | Method | Endpoint | Auth | RBAC | Description |
 |--------|----------|------|------|-------------|
 | GET | `/users/me/` | bearer | — | Get own profile (any authenticated user) |
-| PATCH | `/users/me/` | bearer | — | Update own profile |
-| DELETE | `/users/me/` | bearer | — | Soft-delete own account |
+| PATCH | `/users/me/` | bearer | — | Update own profile (`first_name`, `last_name`, `middle_name`) |
+| DELETE | `/users/me/` | bearer | — | Soft-delete own account (`is_active=False`); optional `refresh` in body to blacklist |
 | GET | `/users/` | bearer | `user` / `read` | List users (needs `can_read_all` on `user`) |
 | GET | `/users/{id}/` | bearer | `user` / `read` | Get user detail |
 | GET | `/users/{id}/roles/` | bearer | `role` / `read` | List user's roles |
-| POST | `/users/{id}/roles/` | bearer | `role` / `create` | Assign role to user |
+| POST | `/users/{id}/roles/` | bearer | `role` / `create` | Assign role (`{"role_id": 1}`) |
 | DELETE | `/users/{id}/roles/{role_id}/` | bearer | `role` / `delete` | Remove role from user |
 
-> **Implementation note (UserRole assignment):** `POST` and `DELETE` on `/users/{id}/roles/` create or remove a **UserRole** join row, not a Role entity. The RBAC column uses `role` / `create` and `role` / `delete` because those endpoints are gated by AccessRule flags on the `role` resource. When implementing, consider a dedicated service (e.g. `assign_user_role()`) so the check stays explicit and is not confused with creating a Role record.
+> **UserRole assignment:** `POST` / `DELETE` on `/users/{id}/roles/` manage **UserRole** join rows, gated by AccessRule flags on the `role` resource. Implemented via `AssignRoleSerializer` and `UserRoleListView` / `UserRoleDetailView` in `apps/rbac/views.py`.
 
 ---
 
@@ -43,7 +58,7 @@ Requires appropriate flags on the `role` or `access_rule` resource (typically ad
 
 | Method | Endpoint | Auth | RBAC | Description |
 |--------|----------|------|------|-------------|
-| GET | `/rbac/roles/` | bearer | `role` / `read` | List roles |
+| GET | `/rbac/roles/` | bearer | `role` / `read` | List roles (includes nested `access_rules`) |
 | POST | `/rbac/roles/` | bearer | `role` / `create` | Create role |
 | GET | `/rbac/roles/{id}/` | bearer | `role` / `read` | Role detail |
 | PATCH | `/rbac/roles/{id}/` | bearer | `role` / `update` | Update role |
@@ -57,31 +72,53 @@ Requires appropriate flags on the `role` or `access_rule` resource (typically ad
 
 ## Tasks (`/api/tasks/`) — Phase 1: Mock
 
+Hardcoded data in `apps/tasks/views.py`. No DB persistence.
+
 | Method | Endpoint | Auth | RBAC | Description |
 |--------|----------|------|------|-------------|
 | GET | `/tasks/` | bearer | `task` / `read` | Returns mock task list |
-| POST | `/tasks/` | bearer | `task` / `create` | Returns mock created task |
+| POST | `/tasks/` | bearer | `task` / `create` | Returns mock created task (id 99, `owner_id` = caller) |
 
 ---
 
 ## Projects (`/api/projects/`) — Phase 1: Mock
 
+Hardcoded data in `apps/projects/views.py`. No DB persistence.
+
 | Method | Endpoint | Auth | RBAC | Description |
 |--------|----------|------|------|-------------|
 | GET | `/projects/` | bearer | `project` / `read` | Returns mock project list |
-| POST | `/projects/` | bearer | `project` / `create` | Returns mock created project |
+| POST | `/projects/` | bearer | `project` / `create` | Returns mock created project (id 99, `owner_id` = caller) |
 
 ---
 
 ## Error Responses
 
+Phase 1 uses **DRF defaults** for most errors. Some RBAC write paths return a custom `{"error": "..."}` body — see below.
+
 ```json
-// 401
-{"error": "Authentication required", "detail": "No valid token provided"}
+// 401 — missing/invalid JWT (DRF/SimpleJWT default)
+{"detail": "Authentication credentials were not provided."}
 
-// 403
-{"error": "Permission denied", "detail": "Required access: resource=task, action=read"}
+// 403 — RBACPermission denied (typical)
+{"detail": "Permission denied. Required: task:read"}
 
-// 400
-{"error": "Validation error", "detail": {"email": ["This field is required."]}}
+// 403 — explicit check in some views (tasks, projects, rbac writes)
+{"error": "Permission denied. Required: task:create"}
+
+// 400 — serializer validation (DRF default)
+{"email": ["This field is required."]}
+
+// 400 — non-field validation
+{"non_field_errors": ["Invalid email or password."]}
+```
+
+**Success messages (non-error):**
+
+```json
+// Logout
+{"detail": "Successfully logged out."}
+
+// Soft delete
+{"detail": "Account deactivated successfully."}
 ```
