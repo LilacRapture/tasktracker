@@ -12,7 +12,7 @@
 
 **Decision:** Use `AbstractBaseUser` + `PermissionsMixin` + custom `UserManager` instead of `AbstractUser`.
 
-**Context:** The test assignment requires a custom auth system. We need full control over the user model fields and don't want Django's default username-centric schema.
+**Context:** TaskTracker is API-first with email-based login. We need explicit control over user fields (name parts, email as identifier) and want to avoid Django's default username-centric schema and unused `AbstractUser` baggage.
 
 **Alternatives considered:**
 - `AbstractUser` — easier, but inherits fields we don't control and couples us to Django's auth conventions
@@ -54,12 +54,12 @@
 
 **Decision:** Build a custom `Role` / `AccessRule` / `UserRole` schema (see `docs/rbac-schema.md`) instead of using `django.contrib.auth` groups and permissions for API access control.
 
-**Context:** The test assignment requires a self-designed access system. Django's built-in permissions are model-centric (add/change/delete per model). We need **resource + action** checks with **ownership** (`can_read` vs `can_read_all`, etc.) mapped to API endpoints.
+**Context:** API endpoints are authorized by resource and action (e.g. `task:read`) with optional ownership tiers (`can_read` vs `can_read_all`, etc.). Django's built-in permissions are model-centric (add/change/delete per model) and don't map cleanly to that model.
 
 **Alternatives considered:**
 - Flat `Permission` table with `resource:action` strings and `RolePermission` M2M — simpler on paper, but no first-class ownership flags; superseded by AccessRule design
 - `django-guardian` (object-level permissions) — still built on Django's permission model
-- Django groups + permissions — explicitly excluded by assignment requirements
+- Django groups + permissions — model-centric CRUD flags; no first-class ownership tiers per resource
 
 **Consequences:**
 - Implement `check_access()` and DRF `RBACPermission` (see rbac-schema)
@@ -75,7 +75,7 @@
 
 **Decision:** User account deletion sets `is_active=False` and logs the user out. No hard delete.
 
-**Context:** Assignment requirement. Preserves audit trail and avoids FK integrity issues.
+**Context:** User-initiated account deletion should preserve historical data and avoid FK integrity issues. Setting `is_active=False` keeps the record for audit while blocking login.
 
 **Consequences:**
 - Login must check `is_active=True`

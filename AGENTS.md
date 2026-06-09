@@ -8,7 +8,7 @@
 ## Project Overview
 
 **Name:** TaskTracker  
-**Purpose:** Portfolio project + test assignment  
+**Purpose:** Personal pet project — portfolio backend for learning and demonstration  
 **What it is:** A task/project management backend with a custom authentication and RBAC (role-based access control) system.  
 **Stack:** Python 3.12, Django 5, Django REST Framework, PostgreSQL, SimpleJWT
 
@@ -16,7 +16,7 @@
 
 ## Current Phase
 
-**Phase 1 — Test Assignment (complete)**
+**Phase 1 (complete)**
 
 Delivered:
 - Custom auth (register, login, logout, refresh, soft delete)
@@ -25,7 +25,7 @@ Delivered:
 - RBAC admin API (roles, access rules, user role assignment)
 - Mock task/project endpoints with RBAC enforcement
 
-**Phase 2 — Portfolio Extension (next)**
+**Phase 2 (next)**
 - Real Task and Project models with full CRUD
 - Filtering, pagination, search
 - Tests, Swagger docs (drf-spectacular)

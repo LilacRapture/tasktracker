@@ -10,7 +10,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     """
     Custom User model. Email is the login identifier, not username.
 
-    Fields according to the test assignment requirement:
+    Profile and auth fields:
       - first_name, last_name, middle_name
       - email (unique login)
       - password (stored as hash via AbstractBaseUser)
