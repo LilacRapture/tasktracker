@@ -38,19 +38,12 @@ class ProjectListView(APIView):
 
     permission_classes = [IsAuthenticated, RBACPermission]
     rbac_resource = "project"
-    rbac_action = "read"
+    rbac_action = "auto"
 
     def get(self, request: Request) -> Response:
         return Response(MOCK_PROJECTS)
 
     def post(self, request: Request) -> Response:
-        from apps.rbac.permissions import check_access
-        if not check_access(request.user, "project", "create"):
-            return Response(
-                {"error": "Permission denied. Required: project:create"},
-                status=403,
-            )
-
         mock_created = {
             "id": 99,
             "name": request.data.get("name", "New project"),

@@ -33,21 +33,13 @@ class RoleListView(APIView):
 
     permission_classes = [IsAuthenticated, RBACPermission]
     rbac_resource = "role"
-    rbac_action = "read"
+    rbac_action = "auto"
 
     def get(self, request: Request) -> Response:
         roles = Role.objects.prefetch_related("access_rules").all()
         return Response(RoleSerializer(roles, many=True).data)
 
     def post(self, request: Request) -> Response:
-        # POST needs create permission — check explicitly
-        from apps.rbac.permissions import check_access
-        if not check_access(request.user, "role", "create"):
-            return Response(
-                {"error": "Permission denied. Required: role:create"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
         serializer = RoleCreateUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         role = serializer.save()
@@ -63,7 +55,7 @@ class RoleDetailView(APIView):
 
     permission_classes = [IsAuthenticated, RBACPermission]
     rbac_resource = "role"
-    rbac_action = "read"
+    rbac_action = "auto"
 
     def _get_role(self, pk: int) -> Role | None:
         try:
@@ -78,32 +70,18 @@ class RoleDetailView(APIView):
         return Response(RoleSerializer(role).data)
 
     def patch(self, request: Request, pk: int) -> Response:
-        from apps.rbac.permissions import check_access
-        if not check_access(request.user, "role", "update"):
-            return Response(
-                {"error": "Permission denied. Required: role:update"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
         role = self._get_role(pk)
         if not role:
             return Response({"error": "Not found"}, status=status.HTTP_404_NOT_FOUND)
-
         serializer = RoleCreateUpdateSerializer(role, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(RoleSerializer(role).data)
 
     def delete(self, request: Request, pk: int) -> Response:
-        from apps.rbac.permissions import check_access
-        if not check_access(request.user, "role", "delete"):
-            return Response(
-                {"error": "Permission denied. Required: role:delete"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
         role = self._get_role(pk)
         if not role:
             return Response({"error": "Not found"}, status=status.HTTP_404_NOT_FOUND)
-
         role.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -120,7 +98,7 @@ class AccessRuleListView(APIView):
 
     permission_classes = [IsAuthenticated, RBACPermission]
     rbac_resource = "access_rule"
-    rbac_action = "read"
+    rbac_action = "auto"
 
     def _get_role(self, role_id: int) -> Role | None:
         try:
@@ -132,17 +110,10 @@ class AccessRuleListView(APIView):
         role = self._get_role(role_id)
         if not role:
             return Response({"error": "Role not found"}, status=status.HTTP_404_NOT_FOUND)
-
         rules = AccessRule.objects.filter(role=role)
         return Response(AccessRuleSerializer(rules, many=True).data)
 
     def post(self, request: Request, role_id: int) -> Response:
-        from apps.rbac.permissions import check_access
-        if not check_access(request.user, "access_rule", "create"):
-            return Response(
-                {"error": "Permission denied. Required: access_rule:create"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
         role = self._get_role(role_id)
         if not role:
             return Response({"error": "Role not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -150,7 +121,6 @@ class AccessRuleListView(APIView):
         serializer = AccessRuleCreateUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        # Check uniqueness (role + resource)
         resource = serializer.validated_data["resource"]
         if AccessRule.objects.filter(role=role, resource=resource).exists():
             return Response(
@@ -170,7 +140,7 @@ class AccessRuleDetailView(APIView):
 
     permission_classes = [IsAuthenticated, RBACPermission]
     rbac_resource = "access_rule"
-    rbac_action = "update"
+    rbac_action = "auto"
 
     def _get_rule(self, role_id: int, resource: str) -> AccessRule | None:
         try:
@@ -182,23 +152,15 @@ class AccessRuleDetailView(APIView):
         rule = self._get_rule(role_id, resource)
         if not rule:
             return Response({"error": "Not found"}, status=status.HTTP_404_NOT_FOUND)
-
         serializer = AccessRuleCreateUpdateSerializer(rule, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(AccessRuleSerializer(rule).data)
 
     def delete(self, request: Request, role_id: int, resource: str) -> Response:
-        from apps.rbac.permissions import check_access
-        if not check_access(request.user, "access_rule", "delete"):
-            return Response(
-                {"error": "Permission denied. Required: access_rule:delete"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
         rule = self._get_rule(role_id, resource)
         if not rule:
             return Response({"error": "Not found"}, status=status.HTTP_404_NOT_FOUND)
-
         rule.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -215,7 +177,7 @@ class UserRoleListView(APIView):
 
     permission_classes = [IsAuthenticated, RBACPermission]
     rbac_resource = "role"
-    rbac_action = "read"
+    rbac_action = "auto"
 
     def _get_user(self, user_id: int):
         try:
@@ -227,17 +189,10 @@ class UserRoleListView(APIView):
         user = self._get_user(user_id)
         if not user:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
-
         user_roles = UserRole.objects.filter(user=user).select_related("role", "assigned_by")
         return Response(UserRoleSerializer(user_roles, many=True).data)
 
     def post(self, request: Request, user_id: int) -> Response:
-        from apps.rbac.permissions import check_access
-        if not check_access(request.user, "role", "create"):
-            return Response(
-                {"error": "Permission denied. Required: role:create"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
         user = self._get_user(user_id)
         if not user:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -266,13 +221,12 @@ class UserRoleDetailView(APIView):
 
     permission_classes = [IsAuthenticated, RBACPermission]
     rbac_resource = "role"
-    rbac_action = "delete"
+    rbac_action = "auto"
 
     def delete(self, request: Request, user_id: int, role_id: int) -> Response:
         try:
             user_role = UserRole.objects.get(user_id=user_id, role_id=role_id)
         except UserRole.DoesNotExist:
             return Response({"error": "Not found"}, status=status.HTTP_404_NOT_FOUND)
-
         user_role.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

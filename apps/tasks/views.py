@@ -45,20 +45,12 @@ class TaskListView(APIView):
 
     permission_classes = [IsAuthenticated, RBACPermission]
     rbac_resource = "task"
-    rbac_action = "read"
+    rbac_action = "auto"
 
     def get(self, request: Request) -> Response:
         return Response(MOCK_TASKS)
 
     def post(self, request: Request) -> Response:
-        from apps.rbac.permissions import check_access
-        if not check_access(request.user, "task", "create"):
-            return Response(
-                {"error": "Permission denied. Required: task:create"},
-                status=403,
-            )
-
-        # Mock response — pretend we created a task
         mock_created = {
             "id": 99,
             "title": request.data.get("title", "New task"),
