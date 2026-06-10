@@ -4,6 +4,8 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from .tokens import generate_jwt_pair
+
 User = get_user_model()
 logger = logging.getLogger(__name__)
 
@@ -91,14 +93,13 @@ class LoginSerializer(serializers.Serializer):
             )
 
         # Generate JWT pair
-        refresh = RefreshToken.for_user(user)
+        tokens = generate_jwt_pair(user)
 
         logger.info("User logged in: %s", user.email)
 
         return {
             "user": user,
-            "access": str(refresh.access_token),
-            "refresh": str(refresh),
+            **tokens,
         }
 
 

@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from .serializers import LoginSerializer, LogoutSerializer, RegisterSerializer, UserBriefSerializer
+from .tokens import generate_jwt_pair
 
 logger = logging.getLogger(__name__)
 
@@ -26,15 +27,12 @@ class RegisterView(APIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
 
-        # Generate tokens so user is logged in right after registration
-        from rest_framework_simplejwt.tokens import RefreshToken
-        refresh = RefreshToken.for_user(user)
+        tokens = generate_jwt_pair(user)
 
         return Response(
             {
                 "user": UserBriefSerializer(user).data,
-                "access": str(refresh.access_token),
-                "refresh": str(refresh),
+                **tokens,
             },
             status=status.HTTP_201_CREATED,
         )
