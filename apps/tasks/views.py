@@ -1,46 +1,21 @@
 import logging
+from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.rbac.permissions import RBACPermission
+from apps.rbac.permissions import RBACPermission, get_accessible_queryset
+from .models import Task
+from .serializers import TaskSerializer, TaskWriteSerializer
 
 logger = logging.getLogger(__name__)
-
-# Mock data — will be replaced with real Task model in Phase 2
-MOCK_TASKS = [
-    {
-        "id": 1,
-        "title": "Set up project repository",
-        "description": "Initialize git repo, configure CI/CD pipeline",
-        "status": "done",
-        "owner_id": 1,
-    },
-    {
-        "id": 2,
-        "title": "Design database schema",
-        "description": "ERD for tasks, projects, comments",
-        "status": "in_progress",
-        "owner_id": 2,
-    },
-    {
-        "id": 3,
-        "title": "Implement auth endpoints",
-        "description": "Register, login, logout, token refresh",
-        "status": "in_progress",
-        "owner_id": 2,
-    },
-]
 
 
 class TaskListView(APIView):
     """
-    GET  /api/tasks/  — list mock tasks (requires task:read)
-    POST /api/tasks/  — create mock task (requires task:create)
-
-    Phase 1: returns hardcoded data to demonstrate RBAC works.
-    Phase 2: will use real Task model with full CRUD.
+    GET  /api/tasks/  — list tasks accessible to the user
+    POST /api/tasks/  — create a new task (owner = caller)
     """
 
     permission_classes = [IsAuthenticated, RBACPermission]
@@ -48,15 +23,64 @@ class TaskListView(APIView):
     rbac_action = "auto"
 
     def get(self, request: Request) -> Response:
-        return Response(MOCK_TASKS)
+        qs = get_accessible_queryset(
+            request.user,
+            "task",
+            "read",
+            Task.objects.select_related("owner", "project"),
+        )
+        return Response(TaskSerializer(qs, many=True).data)
 
     def post(self, request: Request) -> Response:
-        mock_created = {
-            "id": 99,
-            "title": request.data.get("title", "New task"),
-            "description": request.data.get("description", ""),
-            "status": "todo",
-            "owner_id": request.user.pk,
-        }
-        logger.info("Mock task created by user %s", request.user.email)
-        return Response(mock_created, status=201)
+        serializer = TaskWriteSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        task = serializer.save()
+        return Response(TaskSerializer(task).data, status=status.HTTP_201_CREATED)
+
+
+class TaskDetailView(APIView):
+    """
+    GET    /api/tasks/{id}/  — task detail
+    PATCH  /api/tasks/{id}/  — update task
+    DELETE /api/tasks/{id}/  — delete task
+    """
+
+    permission_classes = [IsAuthenticated, RBACPermission]
+    rbac_resource = "task"
+    rbac_action = "auto"
+
+    def get_rbac_owner_id(self, request: Request, obj: Task) -> int:
+        return obj.owner_id
+
+    def _get_object(self, request: Request, pk: int) -> Task | None:
+        try:
+            obj = Task.objects.select_related("owner", "project").get(pk=pk)
+        except Task.DoesNotExist:
+            return None
+        self.check_object_permissions(request, obj)
+        return obj
+
+    def get(self, request: Request, pk: int) -> Response:
+        obj = self._get_object(request, pk)
+        if obj is None:
+            return Response({"error": "Not found"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(TaskSerializer(obj).data)
+
+    def patch(self, request: Request, pk: int) -> Response:
+        obj = self._get_object(request, pk)
+        if obj is None:
+            return Response({"error": "Not found"}, status=status.HTTP_404_NOT_FOUND)
+        serializer = TaskWriteSerializer(
+            obj, data=request.data, partial=True, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(TaskSerializer(obj).data)
+
+    def delete(self, request: Request, pk: int) -> Response:
+        obj = self._get_object(request, pk)
+        if obj is None:
+            return Response({"error": "Not found"}, status=status.HTTP_404_NOT_FOUND)
+        obj.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+        
