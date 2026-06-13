@@ -1,5 +1,7 @@
 # TaskTracker
 
+![Tests](https://github.com/LilacRapture/tasktracker/actions/workflows/tests.yml/badge.svg)
+
 API backend for task/project management with custom JWT authentication and ownership-aware RBAC.
 
 **Phase 1:** complete — custom auth, RBAC, user API, mock tasks/projects.  
