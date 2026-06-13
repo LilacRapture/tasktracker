@@ -1,4 +1,5 @@
 import pytest
+
 from apps.rbac.models import AccessRule, Role, UserRole
 
 pytestmark = pytest.mark.django_db

@@ -1,4 +1,5 @@
 import pytest
+
 from apps.projects.models import Project
 
 pytestmark = pytest.mark.django_db

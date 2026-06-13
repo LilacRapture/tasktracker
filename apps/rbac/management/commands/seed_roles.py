@@ -1,6 +1,8 @@
 import logging
+
 from django.core.management.base import BaseCommand
-from apps.rbac.models import Role, AccessRule
+
+from apps.rbac.models import AccessRule, Role
 
 logger = logging.getLogger(__name__)
 

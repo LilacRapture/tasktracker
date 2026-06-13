@@ -1,4 +1,5 @@
 import pytest
+
 from apps.tasks.models import Task
 
 pytestmark = pytest.mark.django_db

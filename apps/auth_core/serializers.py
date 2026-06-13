@@ -1,4 +1,5 @@
 import logging
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
@@ -123,7 +124,7 @@ class LogoutSerializer(serializers.Serializer):
             token = RefreshToken(self.token)
             token.blacklist()
             logger.info("Refresh token blacklisted")
-        except Exception as e:
+        except Exception:
             raise serializers.ValidationError({"refresh": "Token is invalid or already blacklisted."})
 
 

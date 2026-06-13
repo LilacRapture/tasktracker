@@ -1,9 +1,11 @@
 import logging
+
 from django.db.models import Q
 from rest_framework.permissions import BasePermission
 from rest_framework.request import Request
 from rest_framework.views import APIView
-from .models import UserRole, AccessRule
+
+from .models import AccessRule, UserRole
 
 logger = logging.getLogger(__name__)
 

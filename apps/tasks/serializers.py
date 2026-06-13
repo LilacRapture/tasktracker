@@ -1,7 +1,10 @@
 import logging
+
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
+
 from apps.projects.models import Project
+
 from .models import Task
 
 User = get_user_model()

@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import Role, UserRole, AccessRule
+
+from .models import AccessRule, Role, UserRole
 
 
 @admin.register(Role)

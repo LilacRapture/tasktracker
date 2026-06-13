@@ -1,7 +1,9 @@
 import logging
+
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
-from .models import Role, AccessRule, UserRole
+
+from .models import AccessRule, Role, UserRole
 
 User = get_user_model()
 logger = logging.getLogger(__name__)

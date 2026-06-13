@@ -1,6 +1,8 @@
 from django.urls import path
-from apps.rbac.views import UserRoleListView, UserRoleDetailView
-from .views import MeView, UserListView, UserDetailView
+
+from apps.rbac.views import UserRoleDetailView, UserRoleListView
+
+from .views import MeView, UserDetailView, UserListView
 
 urlpatterns = [
     path("me/", MeView.as_view(), name="user-me"),

@@ -1,11 +1,10 @@
 from django.urls import path
+
 from .views import (
-    RoleListView,
-    RoleDetailView,
-    AccessRuleListView,
     AccessRuleDetailView,
-    UserRoleListView,
-    UserRoleDetailView,
+    AccessRuleListView,
+    RoleDetailView,
+    RoleListView,
 )
 
 urlpatterns = [
