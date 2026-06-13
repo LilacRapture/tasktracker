@@ -142,6 +142,28 @@ against a hypothetical future role only.
 
 ---
 
+## ADR-008 — pytest + pytest-django for testing
+
+**Date:** 2026-06-13
+**Status:** Accepted
+
+**Decision:** Use pytest with pytest-django instead of Django's built-in
+unittest-based TestCase/TestRunner.
+
+**Context:** pytest's fixtures and parametrization fit well with RBAC
+testing — the access matrix in `docs/rbac-schema.md` is naturally expressed
+as a parametrized table (role × resource × action → expected bool).
+
+**Alternatives considered:**
+- `django.test.TestCase` — works fine, but parametrization is more verbose
+  (subTest or manual loops)
+
+**Consequences:**
+- `pytest.ini` / `pyproject.toml` config needed for `DJANGO_SETTINGS_MODULE`
+- Test files: `apps/<app>/tests/test_*.py` or `apps/<app>/tests.py`
+
+---
+
 ## Template for new ADRs
 
 ```
