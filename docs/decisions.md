@@ -117,6 +117,31 @@
 
 ---
 
+## ADR-007 — No project-ownership check on Task.project assignment
+
+**Date:** 2026-06-12
+**Status:** Accepted
+
+**Decision:** TaskWriteSerializer accepts any `project` id the requesting
+user can read (i.e. any project, since all roles with `task:create` also
+have `project:read_all`). No additional check that the user owns or can
+modify the target project.
+
+**Context:** Considered adding `validate_project` to restrict task→project
+linking to projects the user can modify. Reviewed against current seed
+roles (admin, manager, developer, viewer) — no role combination grants
+`task:create` alongside a restricted (`project:read` without `_all`) view
+of projects, so the restriction would have no effect today and protects
+against a hypothetical future role only.
+
+**Consequences:**
+- If a future role is introduced with `project:read` (own only, no `_all`)
+  combined with `task:create`, revisit this — add `validate_project` using
+  `get_accessible_queryset(user, "project", "read", Project.objects.all())`
+  to prevent referencing unseen project ids.
+
+---
+
 ## Template for new ADRs
 
 ```

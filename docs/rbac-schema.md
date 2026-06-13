@@ -196,6 +196,43 @@ Wrap this in the DRF `RBACPermission` class in `apps/rbac/permissions.py`.
 
 ---
 
+## Two-layer enforcement (list vs object level)
+
+`check_access()` requires `obj_owner_id` to grant own-object access — it
+answers "can this user act on THIS specific object?" That's correct for
+detail views (GET/PATCH/DELETE on `/tasks/{id}/`).
+
+For **list/create** endpoints there is no single object yet, so a second
+function is used:
+
+### `has_any_access(user, resource, action) -> bool`
+
+Endpoint-level gate. Returns True if the user has `can_{action}` OR
+`can_{action}_all` (for create: `can_create`). Used in
+`RBACPermission.has_permission()`.
+
+### `get_accessible_queryset(user, resource, action, queryset) -> QuerySet`
+
+Row-level filter for list endpoints. Assumes the model has an `owner` FK.
+
+- `can_{action}_all` → full queryset
+- `can_{action}` only → `queryset.filter(owner=user)`
+- neither → `queryset.none()`
+
+### Summary table
+
+| Endpoint type | Permission check | Row filtering |
+|---|---|---|
+| List (GET /tasks/) | `has_any_access` | `get_accessible_queryset` |
+| Create (POST /tasks/) | `has_any_access` (can_create) | n/a |
+| Detail (GET/PATCH/DELETE /tasks/{id}/) | `has_object_permission` → `check_access(obj_owner_id=...)` | n/a |
+
+Both layers are required: `has_any_access` alone would let a
+`can_read`-only user reach `/tasks/` but `get_accessible_queryset` then
+correctly limits results to their own tasks.
+
+---
+
 ## How Views Declare Required Access
 
 ```python

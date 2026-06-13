@@ -119,7 +119,7 @@ See `docs/api.md` for response shapes.
 - [x] Mock task/project views with RBAC
 
 ### Phase 2 — Next
-- [ ] Real Task/Project models and full CRUD
+- [x] Real Task/Project models and full CRUD
 - [ ] Filtering, pagination, search
 - [ ] Tests, Swagger (drf-spectacular)
 - [ ] Docker + deploy (`docker-compose.yml` exists but is not configured yet)

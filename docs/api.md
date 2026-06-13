@@ -70,25 +70,25 @@ Requires appropriate flags on the `role` or `access_rule` resource (typically ad
 
 ---
 
-## Tasks (`/api/tasks/`) — Phase 1: Mock
-
-Hardcoded data in `apps/tasks/views.py`. No DB persistence.
+## Tasks (`/api/tasks/`)
 
 | Method | Endpoint | Auth | RBAC | Description |
 |--------|----------|------|------|-------------|
-| GET | `/tasks/` | bearer | `task` / `read` | Returns mock task list |
-| POST | `/tasks/` | bearer | `task` / `create` | Returns mock created task (id 99, `owner_id` = caller) |
+| GET | `/tasks/` | bearer | `task` / `read` | List tasks (own or all, depending on `can_read_all`) |
+| POST | `/tasks/` | bearer | `task` / `create` | Create task (`owner` = caller) |
+| GET | `/tasks/{id}/` | bearer | `task` / `read` | Task detail |
+| PATCH | `/tasks/{id}/` | bearer | `task` / `update` | Update task (own, or any with `can_update_all`) |
+| DELETE | `/tasks/{id}/` | bearer | `task` / `delete` | Delete task (own, or any with `can_delete_all`) |
 
----
-
-## Projects (`/api/projects/`) — Phase 1: Mock
-
-Hardcoded data in `apps/projects/views.py`. No DB persistence.
+## Projects (`/api/projects/`)
 
 | Method | Endpoint | Auth | RBAC | Description |
 |--------|----------|------|------|-------------|
-| GET | `/projects/` | bearer | `project` / `read` | Returns mock project list |
-| POST | `/projects/` | bearer | `project` / `create` | Returns mock created project (id 99, `owner_id` = caller) |
+| GET | `/projects/` | bearer | `project` / `read` | List projects (own or all) |
+| POST | `/projects/` | bearer | `project` / `create` | Create project (`owner` = caller) |
+| GET | `/projects/{id}/` | bearer | `project` / `read` | Project detail |
+| PATCH | `/projects/{id}/` | bearer | `project` / `update` | Update project |
+| DELETE | `/projects/{id}/` | bearer | `project` / `delete` | Delete project |
 
 ---
 
