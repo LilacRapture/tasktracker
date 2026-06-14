@@ -34,7 +34,7 @@ def test_admin_sees_all_projects(auth_client, admin_user, developer_project, vie
     response = client.get(PROJECTS_URL)
 
     assert response.status_code == 200
-    names = {p["name"] for p in response.json()}
+    names = {p["name"] for p in response.json()["results"]}
     assert names == {"Developer's project", "Viewer's project"}
 
 
@@ -43,7 +43,7 @@ def test_developer_sees_all_projects_read_all(auth_client, developer_user, devel
     response = client.get(PROJECTS_URL)
 
     assert response.status_code == 200
-    names = {p["name"] for p in response.json()}
+    names = {p["name"] for p in response.json()["results"]}
     assert names == {"Developer's project", "Viewer's project"}
 
 
@@ -52,8 +52,18 @@ def test_viewer_sees_all_projects_read_all(auth_client, viewer_user, developer_p
     response = client.get(PROJECTS_URL)
 
     assert response.status_code == 200
-    names = {p["name"] for p in response.json()}
+    names = {p["name"] for p in response.json()["results"]}
     assert names == {"Developer's project", "Viewer's project"}
+
+
+def test_project_list_is_paginated(auth_client, admin_user, developer_project, viewer_project):
+    client = auth_client(admin_user)
+    response = client.get(PROJECTS_URL)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert set(data.keys()) >= {"count", "next", "previous", "results"}
+    assert data["count"] == 2
 
 
 # ---------------------------------------------------------------------------

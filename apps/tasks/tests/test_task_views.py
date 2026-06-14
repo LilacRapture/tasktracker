@@ -34,7 +34,7 @@ def test_admin_sees_all_tasks(auth_client, admin_user, developer_task, viewer_ta
     response = client.get(TASKS_URL)
 
     assert response.status_code == 200
-    titles = {t["title"] for t in response.json()}
+    titles = {t["title"] for t in response.json()["results"]}
     assert titles == {"Developer's task", "Viewer's task"}
 
 
@@ -44,7 +44,7 @@ def test_developer_sees_all_tasks_read_all(auth_client, developer_user, develope
     response = client.get(TASKS_URL)
 
     assert response.status_code == 200
-    titles = {t["title"] for t in response.json()}
+    titles = {t["title"] for t in response.json()["results"]}
     assert titles == {"Developer's task", "Viewer's task"}
 
 
@@ -54,13 +54,23 @@ def test_viewer_sees_all_tasks_read_all(auth_client, viewer_user, developer_task
     response = client.get(TASKS_URL)
 
     assert response.status_code == 200
-    titles = {t["title"] for t in response.json()}
+    titles = {t["title"] for t in response.json()["results"]}
     assert titles == {"Developer's task", "Viewer's task"}
 
 
 def test_list_requires_authentication(api_client):
     response = api_client.get(TASKS_URL)
     assert response.status_code == 401
+
+
+def test_task_list_is_paginated(auth_client, admin_user, developer_task, viewer_task):
+    client = auth_client(admin_user)
+    response = client.get(TASKS_URL)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert set(data.keys()) >= {"count", "next", "previous", "results"}
+    assert data["count"] == 2
 
 
 # ---------------------------------------------------------------------------

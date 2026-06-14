@@ -1,6 +1,6 @@
 import logging
 
-from rest_framework import status
+from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -14,28 +14,25 @@ from .serializers import ProjectSerializer
 logger = logging.getLogger(__name__)
 
 
-class ProjectListView(APIView):
+class ProjectListView(generics.ListCreateAPIView):
     """
-    GET  /api/projects/  — list projects accessible to the user
+    GET  /api/projects/  — list projects accessible to the user (paginated)
     POST /api/projects/  — create a new project (owner = caller)
     """
 
     permission_classes = [IsAuthenticated, RBACPermission]
     rbac_resource = "project"
     rbac_action = "auto"
+    serializer_class = ProjectSerializer
 
-    def get(self, request: Request) -> Response:
-        qs = get_accessible_queryset(
-            request.user, "project", "read", Project.objects.select_related("owner")
+    def get_queryset(self):
+        return get_accessible_queryset(
+            self.request.user, "project", "read", Project.objects.select_related("owner")
         )
-        return Response(ProjectSerializer(qs, many=True).data)
 
-    def post(self, request: Request) -> Response:
-        serializer = ProjectSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        project = serializer.save(owner=request.user)
+    def perform_create(self, serializer):
+        project = serializer.save(owner=self.request.user)
         logger.info("Project created: %s (owner=%s)", project.name, project.owner.email)
-        return Response(ProjectSerializer(project).data, status=status.HTTP_201_CREATED)
 
 
 class ProjectDetailView(APIView):

@@ -164,6 +164,43 @@ as a parametrized table (role × resource × action → expected bool).
 
 ---
 
+## ADR-009 — generics.ListCreateAPIView + PageNumberPagination for Task/Project lists
+
+**Date:** 2026-06-14
+**Status:** Accepted
+
+**Decision:** Convert `TaskListView` and `ProjectListView` from plain `APIView`
+to `generics.ListCreateAPIView`. RBAC row-level filtering moves into
+`get_queryset()` via `get_accessible_queryset(...)`. Pagination is enabled
+globally via `DEFAULT_PAGINATION_CLASS = PageNumberPagination`,
+`PAGE_SIZE = 20`.
+
+**Context:** Phase 2 requires filtering, pagination, and search, plus
+drf-spectacular docs later. `generics.ListCreateAPIView` provides pagination
+and integrates cleanly with `DjangoFilterBackend` / `SearchFilter` via
+`filter_backends`, and gives drf-spectacular a much better starting point for
+schema introspection than a bare `APIView`.
+
+**Alternatives considered:**
+- Manually instantiate `PageNumberPagination` inside the existing `APIView.get()`
+  — works, but duplicates logic that generics already provide and doesn't help
+  with filtering/search/schema generation.
+
+**Consequences:**
+- Response shape for `GET /tasks/` and `GET /projects/` changes from a plain
+  array to `{"count", "next", "previous", "results"}` — `docs/api.md` updated,
+  existing tests updated to read `response.json()["results"]`.
+- `TaskListView.create()` is overridden directly (rather than relying on
+  `CreateModelMixin.create()`) because read (`TaskSerializer`) and write
+  (`TaskWriteSerializer`) use different serializers with different shapes.
+- Detail views (`TaskDetailView`, `ProjectDetailView`) remain plain `APIView` —
+  pagination doesn't apply to single-object responses, no change needed there.
+- `UserListView` is not yet converted and still returns a flat array — response
+  shape is inconsistent between `/users/` and `/tasks/` / `/projects/` until
+  that's addressed in a future change.
+
+---
+
 ## Template for new ADRs
 
 ```

@@ -1,6 +1,6 @@
 import logging
 
-from rest_framework import status
+from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -14,9 +14,9 @@ from .serializers import TaskSerializer, TaskWriteSerializer
 logger = logging.getLogger(__name__)
 
 
-class TaskListView(APIView):
+class TaskListView(generics.ListCreateAPIView):
     """
-    GET  /api/tasks/  — list tasks accessible to the user
+    GET  /api/tasks/  — list tasks accessible to the user (paginated)
     POST /api/tasks/  — create a new task (owner = caller)
     """
 
@@ -24,16 +24,20 @@ class TaskListView(APIView):
     rbac_resource = "task"
     rbac_action = "auto"
 
-    def get(self, request: Request) -> Response:
-        qs = get_accessible_queryset(
-            request.user,
+    def get_queryset(self):
+        return get_accessible_queryset(
+            self.request.user,
             "task",
             "read",
             Task.objects.select_related("owner", "project"),
         )
-        return Response(TaskSerializer(qs, many=True).data)
 
-    def post(self, request: Request) -> Response:
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return TaskWriteSerializer
+        return TaskSerializer
+
+    def create(self, request: Request, *args, **kwargs) -> Response:
         serializer = TaskWriteSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         task = serializer.save()

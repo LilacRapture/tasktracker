@@ -92,6 +92,23 @@ Requires appropriate flags on the `role` or `access_rule` resource (typically ad
 
 ---
 
+## Pagination
+
+`GET /tasks/` and `GET /projects/` are paginated (`PageNumberPagination`, `PAGE_SIZE=20`).
+
+```json
+{
+  "count": 42,
+  "next": "http://localhost:8000/api/tasks/?page=2",
+  "previous": null,
+  "results": [ ... ]
+}
+```
+
+Use `?page=N` to navigate. Requesting a page beyond the last page returns `404 {"detail": "Invalid page."}`.
+
+---
+
 ## Error Responses
 
 Phase 1 uses **DRF defaults** for most errors. Some RBAC write paths return a custom `{"error": "..."}` body — see below.
