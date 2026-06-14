@@ -1,11 +1,13 @@
 import logging
 
+from drf_spectacular.utils import extend_schema
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.common.schema import ErrorResponseSerializer
 from apps.rbac.permissions import RBACPermission, get_accessible_queryset
 
 from .filters import TaskFilter
@@ -71,12 +73,17 @@ class TaskDetailView(APIView):
         self.check_object_permissions(request, obj)
         return obj
 
+    @extend_schema(responses={200: TaskSerializer, 404: ErrorResponseSerializer})
     def get(self, request: Request, pk: int) -> Response:
         obj = self._get_object(request, pk)
         if obj is None:
             return Response({"error": "Not found"}, status=status.HTTP_404_NOT_FOUND)
         return Response(TaskSerializer(obj).data)
 
+    @extend_schema(
+        request=TaskWriteSerializer,
+        responses={200: TaskSerializer, 400: ErrorResponseSerializer},
+    )
     def patch(self, request: Request, pk: int) -> Response:
         obj = self._get_object(request, pk)
         if obj is None:
@@ -88,6 +95,7 @@ class TaskDetailView(APIView):
         serializer.save()
         return Response(TaskSerializer(obj).data)
 
+    @extend_schema(responses={204: None, 404: ErrorResponseSerializer})
     def delete(self, request: Request, pk: int) -> Response:
         obj = self._get_object(request, pk)
         if obj is None:

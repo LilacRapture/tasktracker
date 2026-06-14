@@ -225,6 +225,34 @@ which makes these backends a one-line addition per view.
 
 ---
 
+## ADR-011 — drf-spectacular for OpenAPI schema & Swagger UI
+
+**Date:** 2026-06-14
+**Status:** Accepted
+
+**Decision:** Enable `drf-spectacular` for OpenAPI 3 schema generation, served
+via `/api/schema/`, `/api/docs/` (Swagger UI), `/api/redoc/` (ReDoc).
+
+**Context:** Plain `APIView` classes without `serializer_class` can't be
+auto-introspected by drf-spectacular ("unable to guess serializer"). All such
+views (`auth_core`, `users`, `rbac`, and the Task/Project detail views) were
+annotated with `@extend_schema(request=..., responses=...)`.
+
+**Consequences:**
+- New shared module `apps/common/schema.py` — `ErrorResponseSerializer` /
+  `DetailResponseSerializer` (`inline_serializer`) for the project's
+  `{"error": "..."}` / `{"detail": "..."}` response conventions, reused
+  across `users`, `rbac`, `tasks`, `projects`.
+- `ENUM_NAME_OVERRIDES` in `SPECTACULAR_SETTINGS` disambiguates `Task.status`
+  vs `Project.status` enums (`TaskStatusEnum` / `ProjectStatusEnum`).
+- Explicit `operation_id` set on `RoleListView.get` and `UserListView.get`
+  to resolve `*_retrieve` naming collisions with their detail views.
+- `manage.py spectacular --validate --fail-on-warn` added to CI to catch
+  schema regressions (new unannotated views, enum collisions, etc.).
+- `schema.yaml` is a generated artifact, not committed (`.gitignore`).
+
+---
+
 ## Template for new ADRs
 
 ```

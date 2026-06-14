@@ -7,6 +7,8 @@ Base URL: `http://localhost:8000/api/`
 
 Auth header (all protected routes): `Authorization: Bearer <access_token>`
 
+**Interactive docs:** Swagger UI at `/api/docs/`, ReDoc at `/api/redoc/`, raw OpenAPI schema at `/api/schema/`.
+
 ---
 
 ## Auth (`/api/auth/`)

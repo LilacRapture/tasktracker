@@ -1,12 +1,14 @@
 import logging
 
 from django.contrib.auth import get_user_model
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.common.schema import ErrorResponseSerializer
 from apps.rbac.permissions import RBACPermission
 
 from .models import AccessRule, Role, UserRole
@@ -37,10 +39,12 @@ class RoleListView(APIView):
     rbac_resource = "role"
     rbac_action = "auto"
 
+    @extend_schema(operation_id="rbac_roles_list", responses=RoleSerializer(many=True))
     def get(self, request: Request) -> Response:
         roles = Role.objects.prefetch_related("access_rules").all()
         return Response(RoleSerializer(roles, many=True).data)
 
+    @extend_schema(request=RoleCreateUpdateSerializer, responses={201: RoleSerializer})
     def post(self, request: Request) -> Response:
         serializer = RoleCreateUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -65,12 +69,17 @@ class RoleDetailView(APIView):
         except Role.DoesNotExist:
             return None
 
+    @extend_schema(responses={200: RoleSerializer, 404: ErrorResponseSerializer})
     def get(self, request: Request, pk: int) -> Response:
         role = self._get_role(pk)
         if not role:
             return Response({"error": "Not found"}, status=status.HTTP_404_NOT_FOUND)
         return Response(RoleSerializer(role).data)
 
+    @extend_schema(
+        request=RoleCreateUpdateSerializer,
+        responses={200: RoleSerializer, 404: ErrorResponseSerializer},
+    )
     def patch(self, request: Request, pk: int) -> Response:
         role = self._get_role(pk)
         if not role:
@@ -80,6 +89,7 @@ class RoleDetailView(APIView):
         serializer.save()
         return Response(RoleSerializer(role).data)
 
+    @extend_schema(responses={204: None, 404: ErrorResponseSerializer})
     def delete(self, request: Request, pk: int) -> Response:
         role = self._get_role(pk)
         if not role:
@@ -108,6 +118,7 @@ class AccessRuleListView(APIView):
         except Role.DoesNotExist:
             return None
 
+    @extend_schema(responses={200: AccessRuleSerializer(many=True), 404: ErrorResponseSerializer})
     def get(self, request: Request, role_id: int) -> Response:
         role = self._get_role(role_id)
         if not role:
@@ -115,6 +126,14 @@ class AccessRuleListView(APIView):
         rules = AccessRule.objects.filter(role=role)
         return Response(AccessRuleSerializer(rules, many=True).data)
 
+    @extend_schema(
+        request=AccessRuleCreateUpdateSerializer,
+        responses={
+            201: AccessRuleSerializer,
+            400: ErrorResponseSerializer,
+            404: ErrorResponseSerializer,
+        },
+    )
     def post(self, request: Request, role_id: int) -> Response:
         role = self._get_role(role_id)
         if not role:
@@ -150,6 +169,10 @@ class AccessRuleDetailView(APIView):
         except AccessRule.DoesNotExist:
             return None
 
+    @extend_schema(
+        request=AccessRuleCreateUpdateSerializer,
+        responses={200: AccessRuleSerializer, 404: ErrorResponseSerializer},
+    )
     def patch(self, request: Request, role_id: int, resource: str) -> Response:
         rule = self._get_rule(role_id, resource)
         if not rule:
@@ -159,6 +182,7 @@ class AccessRuleDetailView(APIView):
         serializer.save()
         return Response(AccessRuleSerializer(rule).data)
 
+    @extend_schema(responses={204: None, 404: ErrorResponseSerializer})
     def delete(self, request: Request, role_id: int, resource: str) -> Response:
         rule = self._get_rule(role_id, resource)
         if not rule:
@@ -187,6 +211,7 @@ class UserRoleListView(APIView):
         except User.DoesNotExist:
             return None
 
+    @extend_schema(responses={200: UserRoleSerializer(many=True), 404: ErrorResponseSerializer})
     def get(self, request: Request, user_id: int) -> Response:
         user = self._get_user(user_id)
         if not user:
@@ -194,6 +219,10 @@ class UserRoleListView(APIView):
         user_roles = UserRole.objects.filter(user=user).select_related("role", "assigned_by")
         return Response(UserRoleSerializer(user_roles, many=True).data)
 
+    @extend_schema(
+        request=AssignRoleSerializer,
+        responses={201: UserRoleSerializer, 404: ErrorResponseSerializer},
+    )
     def post(self, request: Request, user_id: int) -> Response:
         user = self._get_user(user_id)
         if not user:
@@ -225,6 +254,7 @@ class UserRoleDetailView(APIView):
     rbac_resource = "role"
     rbac_action = "auto"
 
+    @extend_schema(responses={204: None, 404: ErrorResponseSerializer})
     def delete(self, request: Request, user_id: int, role_id: int) -> Response:
         try:
             user_role = UserRole.objects.get(user_id=user_id, role_id=role_id)
@@ -232,3 +262,4 @@ class UserRoleDetailView(APIView):
             return Response({"error": "Not found"}, status=status.HTTP_404_NOT_FOUND)
         user_role.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+        

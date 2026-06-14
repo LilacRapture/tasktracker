@@ -1,13 +1,15 @@
 import logging
 
 from django.contrib.auth import get_user_model
-from rest_framework import status
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from apps.common.schema import DetailResponseSerializer, ErrorResponseSerializer
 from apps.rbac.permissions import RBACPermission
 
 from .serializers import UserListSerializer, UserProfileSerializer, UserUpdateSerializer
@@ -25,10 +27,12 @@ class MeView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(responses=UserProfileSerializer)
     def get(self, request: Request) -> Response:
         serializer = UserProfileSerializer(request.user)
         return Response(serializer.data)
 
+    @extend_schema(request=UserUpdateSerializer, responses=UserProfileSerializer)
     def patch(self, request: Request) -> Response:
         serializer = UserUpdateSerializer(
             request.user,
@@ -39,6 +43,13 @@ class MeView(APIView):
         serializer.save()
         return Response(UserProfileSerializer(request.user).data)
 
+    @extend_schema(
+        request=inline_serializer(
+            name="SoftDeleteRequest",
+            fields={"refresh": serializers.CharField(required=False)},
+        ),
+        responses={200: DetailResponseSerializer},
+    )
     def delete(self, request: Request) -> Response:
         """
         Soft-delete: sets is_active=False and blacklists the refresh token.
@@ -46,14 +57,12 @@ class MeView(APIView):
         """
         user = request.user
 
-        # Blacklist the refresh token if provided
         refresh_token = request.data.get("refresh")
         if refresh_token:
             try:
                 token = RefreshToken(refresh_token)
                 token.blacklist()
             except Exception:
-                # Token already invalid — that's fine, we still delete the account
                 pass
 
         user.soft_delete()
@@ -76,6 +85,7 @@ class UserListView(APIView):
     rbac_resource = "user"
     rbac_action = "read"
 
+    @extend_schema(operation_id="users_list", responses=UserListSerializer(many=True))
     def get(self, request: Request) -> Response:
         users = User.objects.filter(is_active=True)
         serializer = UserListSerializer(users, many=True)
@@ -94,6 +104,7 @@ class UserDetailView(APIView):
     rbac_resource = "user"
     rbac_action = "read"
 
+    @extend_schema(responses={200: UserProfileSerializer, 404: ErrorResponseSerializer})
     def get(self, request: Request, pk: int) -> Response:
         try:
             user = User.objects.get(pk=pk, is_active=True)
@@ -104,3 +115,4 @@ class UserDetailView(APIView):
             )
         serializer = UserProfileSerializer(user)
         return Response(serializer.data)
+        

@@ -38,7 +38,8 @@ python manage.py runserver
 ```
 
 API base: `http://localhost:8000/api/`  
-Admin: `http://localhost:8000/admin/`
+Admin: `http://localhost:8000/admin/`  
+API docs (Swagger): `http://localhost:8000/api/docs/`
 
 ## Documentation
 

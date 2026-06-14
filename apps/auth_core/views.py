@@ -1,11 +1,14 @@
 import logging
 
-from rest_framework import status
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenRefreshView
+
+from apps.common.schema import DetailResponseSerializer
 
 from .serializers import LoginSerializer, LogoutSerializer, RegisterSerializer, UserBriefSerializer
 from .tokens import generate_jwt_pair
@@ -23,6 +26,19 @@ class RegisterView(APIView):
 
     permission_classes = [AllowAny]
 
+    @extend_schema(
+        request=RegisterSerializer,
+        responses={
+            201: inline_serializer(
+                name="RegisterResponse",
+                fields={
+                    "user": UserBriefSerializer(),
+                    "access": serializers.CharField(),
+                    "refresh": serializers.CharField(),
+                },
+            ),
+        },
+    )
     def post(self, request: Request) -> Response:
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -48,6 +64,19 @@ class LoginView(APIView):
 
     permission_classes = [AllowAny]
 
+    @extend_schema(
+        request=LoginSerializer,
+        responses={
+            200: inline_serializer(
+                name="LoginResponse",
+                fields={
+                    "user": UserBriefSerializer(),
+                    "access": serializers.CharField(),
+                    "refresh": serializers.CharField(),
+                },
+            ),
+        },
+    )
     def post(self, request: Request) -> Response:
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -75,6 +104,10 @@ class LogoutView(APIView):
 
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        request=LogoutSerializer,
+        responses={200: DetailResponseSerializer},
+    )
     def post(self, request: Request) -> Response:
         serializer = LogoutSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -95,3 +128,4 @@ class TokenRefreshView(TokenRefreshView):
     Subclassed here so it lives under our urls and can be extended later.
     """
     pass
+    

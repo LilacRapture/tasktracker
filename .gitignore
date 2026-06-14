@@ -36,3 +36,6 @@ Thumbs.db
 .coverage
 coverage.xml
 htmlcov/
+
+# OpenAPI schema (generated, regenerate via manage.py spectacular)
+schema.yaml

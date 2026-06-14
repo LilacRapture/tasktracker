@@ -49,6 +49,9 @@ jobs:
       - name: Lint with ruff
         run: ruff check .
 
+      - name: Validate OpenAPI schema
+        run: python manage.py spectacular --validate --fail-on-warn --file /dev/null
+
       - name: Run tests with coverage
         run: pytest -v
 
