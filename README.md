@@ -1,6 +1,7 @@
 # TaskTracker
 
 ![Tests](https://github.com/LilacRapture/tasktracker/actions/workflows/tests.yml/badge.svg)
+[![codecov](https://codecov.io/github/LilacRapture/tasktracker/graph/badge.svg?token=S5JBJF7PNE)](https://codecov.io/github/LilacRapture/tasktracker)
 
 API backend for task/project management with custom JWT authentication and ownership-aware RBAC.
 
