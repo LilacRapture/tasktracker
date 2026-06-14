@@ -171,4 +171,44 @@ def test_manager_can_delete_any_project(auth_client, manager_user, viewer_projec
     response = client.delete(project_detail_url(viewer_project.id))
 
     assert response.status_code == 204
+
+
+# ---------------------------------------------------------------------------
+# Filtering & search — GET /api/projects/
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def projects_for_filtering(developer_user):
+    return [
+        Project.objects.create(name="Alpha", status="active", owner=developer_user),
+        Project.objects.create(name="Beta", status="completed", owner=developer_user),
+        Project.objects.create(name="Gamma project", status="planned", owner=developer_user),
+    ]
+
+
+def test_filter_projects_by_status(auth_client, admin_user, projects_for_filtering):
+    client = auth_client(admin_user)
+    response = client.get(PROJECTS_URL, {"status": "completed"})
+
+    assert response.status_code == 200
+    names = {p["name"] for p in response.json()["results"]}
+    assert names == {"Beta"}
+
+
+def test_search_projects_by_name(auth_client, admin_user, projects_for_filtering):
+    client = auth_client(admin_user)
+    response = client.get(PROJECTS_URL, {"search": "project"})
+
+    assert response.status_code == 200
+    names = {p["name"] for p in response.json()["results"]}
+    assert names == {"Gamma project"}
+
+
+def test_order_projects_by_name(auth_client, admin_user, projects_for_filtering):
+    client = auth_client(admin_user)
+    response = client.get(PROJECTS_URL, {"ordering": "name"})
+
+    assert response.status_code == 200
+    names = [p["name"] for p in response.json()["results"]]
+    assert names == sorted(names)    
     

@@ -8,6 +8,7 @@ from rest_framework.views import APIView
 
 from apps.rbac.permissions import RBACPermission, get_accessible_queryset
 
+from .filters import TaskFilter
 from .models import Task
 from .serializers import TaskSerializer, TaskWriteSerializer
 
@@ -23,6 +24,10 @@ class TaskListView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated, RBACPermission]
     rbac_resource = "task"
     rbac_action = "auto"
+
+    filterset_class = TaskFilter
+    search_fields = ["title", "description"]
+    ordering_fields = ["created_at", "due_date", "title", "status"]
 
     def get_queryset(self):
         return get_accessible_queryset(

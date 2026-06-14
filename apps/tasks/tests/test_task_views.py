@@ -229,4 +229,64 @@ def test_viewer_cannot_delete_any_task(auth_client, viewer_user, viewer_task):
 
     assert response.status_code == 403
     assert Task.objects.filter(pk=viewer_task.id).exists()
+
+
+# ---------------------------------------------------------------------------
+# Filtering & search — GET /api/tasks/
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def tasks_for_filtering(developer_user):
+    from datetime import date
+
+    return [
+        Task.objects.create(
+            title="Write report", status="todo",
+            due_date=date(2026, 7, 1), owner=developer_user,
+        ),
+        Task.objects.create(
+            title="Fix login bug", status="done",
+            due_date=date(2026, 6, 15), owner=developer_user,
+        ),
+        Task.objects.create(
+            title="Review PR", status="in_progress",
+            due_date=date(2026, 7, 10), owner=developer_user,
+        ),
+    ]
+
+
+def test_filter_tasks_by_status(auth_client, admin_user, tasks_for_filtering):
+    client = auth_client(admin_user)
+    response = client.get(TASKS_URL, {"status": "done"})
+
+    assert response.status_code == 200
+    titles = {t["title"] for t in response.json()["results"]}
+    assert titles == {"Fix login bug"}
+
+
+def test_filter_tasks_by_due_date_range(auth_client, admin_user, tasks_for_filtering):
+    client = auth_client(admin_user)
+    response = client.get(TASKS_URL, {"due_date_after": "2026-07-01"})
+
+    assert response.status_code == 200
+    titles = {t["title"] for t in response.json()["results"]}
+    assert titles == {"Write report", "Review PR"}
+
+
+def test_search_tasks_by_title(auth_client, admin_user, tasks_for_filtering):
+    client = auth_client(admin_user)
+    response = client.get(TASKS_URL, {"search": "bug"})
+
+    assert response.status_code == 200
+    titles = {t["title"] for t in response.json()["results"]}
+    assert titles == {"Fix login bug"}
+
+
+def test_order_tasks_by_due_date(auth_client, admin_user, tasks_for_filtering):
+    client = auth_client(admin_user)
+    response = client.get(TASKS_URL, {"ordering": "due_date"})
+
+    assert response.status_code == 200
+    due_dates = [t["due_date"] for t in response.json()["results"]]
+    assert due_dates == sorted(due_dates)
     

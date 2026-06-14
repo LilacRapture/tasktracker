@@ -201,6 +201,30 @@ schema introspection than a bare `APIView`.
 
 ---
 
+## ADR-010 — django-filter + DRF SearchFilter/OrderingFilter for Task/Project lists
+
+**Date:** 2026-06-14
+**Status:** Accepted
+
+**Decision:** Add `django-filter` and use DRF's built-in `SearchFilter` /
+`OrderingFilter` for `GET /api/tasks/` and `GET /api/projects/`, configured
+via `DEFAULT_FILTER_BACKENDS` and per-view `filterset_class` /
+`search_fields` / `ordering_fields`.
+
+**Context:** Phase 2 requires filtering, pagination, and search. The list
+views were already converted to `generics.ListCreateAPIView` (ADR-009),
+which makes these backends a one-line addition per view.
+
+**Consequences:**
+- Filters/search/ordering operate on the queryset returned by
+  `get_queryset()`, i.e. *after* `get_accessible_queryset()` has applied
+  RBAC row-level filtering — filters can only narrow, never expand, what a
+  user can see.
+- `docs/api.md` updated with the new query params.
+- `django_filters` added to `INSTALLED_APPS` and `requirements.txt`.
+
+---
+
 ## Template for new ADRs
 
 ```

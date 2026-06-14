@@ -8,6 +8,7 @@ from rest_framework.views import APIView
 
 from apps.rbac.permissions import RBACPermission, get_accessible_queryset
 
+from .filters import ProjectFilter
 from .models import Project
 from .serializers import ProjectSerializer
 
@@ -24,6 +25,10 @@ class ProjectListView(generics.ListCreateAPIView):
     rbac_resource = "project"
     rbac_action = "auto"
     serializer_class = ProjectSerializer
+    
+    filterset_class = ProjectFilter
+    search_fields = ["name", "description"]
+    ordering_fields = ["created_at", "updated_at", "name", "status"]
 
     def get_queryset(self):
         return get_accessible_queryset(

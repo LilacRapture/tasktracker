@@ -109,6 +109,25 @@ Use `?page=N` to navigate. Requesting a page beyond the last page returns `404 {
 
 ---
 
+## Filtering & Search
+
+`GET /tasks/` and `GET /projects/` support filtering, full-text search, and ordering via query params. Filters apply *after* RBAC row-level access — they can only narrow results you're already allowed to see, never expand them.
+
+### Tasks (`/api/tasks/`)
+
+| Param | Type | Example |
+|-------|------|---------|
+| `status` | exact | `?status=done` |
+| `project` | id | `?project=3` |
+| `owner` | id | `?owner=5` |
+| `due_date` | date (`YYYY-MM-DD`) | `?due_date=2026-07-01` |
+| `due_date_after` | date, `due_date >=` | `?due_date_after=2026-07-01` |
+| `due_date_before` | date, `due_date <=` | `?due_date_before=2026-07-31` |
+| `search` | text, matches `title` or `description` | `?search=report` |
+| `ordering` | field, prefix `-` for descending | `?ordering=-due_date` (allowed: `created_at`, `due_date`, `title`, `status`) |
+
+---
+
 ## Error Responses
 
 Phase 1 uses **DRF defaults** for most errors. Some RBAC write paths return a custom `{"error": "..."}` body — see below.
