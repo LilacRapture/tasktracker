@@ -6,6 +6,7 @@ requires-python = ">=3.12,<3.13"
 DJANGO_SETTINGS_MODULE = "config.settings"
 python_files = ["test_*.py", "tests.py"]
 testpaths = ["apps"]
+addopts = "--cov=apps --cov-report=term-missing --cov-report=xml"
 
 [tool.ruff]
 line-length = 100
