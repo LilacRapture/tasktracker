@@ -253,6 +253,43 @@ annotated with `@extend_schema(request=..., responses=...)`.
 
 ---
 
+## ADR-012 — No object-level check on role/access_rule/user-roles admin endpoints
+
+**Date:** 2026-06-14
+**Status:** Accepted
+
+**Decision:** RoleListView/DetailView, AccessRuleListView/DetailView,
+UserRoleListView/DetailView and UserDetailView/UserListView rely only on
+RBACPermission.has_permission() (i.e. has_any_access — can_X OR can_X_all)
+for authorization. has_object_permission() / check_access() with
+obj_owner_id is not used for these views.
+
+**Context:** has_any_access() grants endpoint access if EITHER the "own"
+or the "_all" flag is set for (resource, action). For task/project this is
+fine because get_accessible_queryset() / check_access(obj_owner_id=...)
+narrows results to "own" objects afterwards. For role/access_rule/user
+resources there is no meaningful per-object "owner" concept, so no such
+narrowing happens — endpoint access ⇒ access to ALL objects of that type.
+
+Reviewed against current seed roles (docs/rbac-schema.md): for "role",
+"access_rule" and "user" resources, can_X and can_X_all are always equal
+(both True for admin, both False otherwise — except "user"/read where
+admin and manager have both True). So has_any_access() currently behaves
+identically to "has can_X_all", and the gap has no effect today.
+
+**Consequences:**
+- If a future role grants can_read/update/delete=True (own) with
+  can_read/update/delete_all=False on "role", "access_rule" or "user",
+  that role would get FULL access to all roles/rules/user-role
+  assignments/profiles via these endpoints — not just "its own", since
+  "own" is undefined for these resources.
+- Before introducing such a role, either (a) add object-level checks /
+  scoping for these endpoints, or (b) treat can_X (own, without _all) as
+  meaningless/disallowed for resources "role", "access_rule", "user" and
+  document that in docs/rbac-schema.md.
+
+---
+
 ## Template for new ADRs
 
 ```

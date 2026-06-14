@@ -120,8 +120,8 @@ See `docs/api.md` for response shapes.
 
 ### Phase 2 — Next
 - [x] Real Task/Project models and full CRUD
-- [ ] Filtering, pagination, search
-- [ ] Tests, Swagger (drf-spectacular)
+- [x] Filtering, pagination, search
+- [x] Tests, Swagger (drf-spectacular)
 - [ ] Docker + deploy (`docker-compose.yml` exists but is not configured yet)
 
 ### Open Questions

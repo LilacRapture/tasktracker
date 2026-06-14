@@ -128,6 +128,15 @@ Use `?page=N` to navigate. Requesting a page beyond the last page returns `404 {
 | `search` | text, matches `title` or `description` | `?search=report` |
 | `ordering` | field, prefix `-` for descending | `?ordering=-due_date` (allowed: `created_at`, `due_date`, `title`, `status`) |
 
+### Projects (`/api/projects/`)
+
+| Param | Type | Example |
+|-------|------|---------|
+| `status` | exact | `?status=active` |
+| `owner` | id | `?owner=5` |
+| `search` | text, matches `name` or `description` | `?search=website` |
+| `ordering` | field, prefix `-` for descending | `?ordering=-created_at` (allowed: `created_at`, `updated_at`, `name`, `status`) |
+
 ---
 
 ## Error Responses
