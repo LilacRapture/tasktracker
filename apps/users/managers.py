@@ -4,6 +4,8 @@ from typing import TYPE_CHECKING
 from django.contrib.auth.models import BaseUserManager
 
 if TYPE_CHECKING:
+    # Avoids circular import: models.py imports UserManager from this module,
+    # so a real top-level import of User here would fail at runtime.
     from .models import User
 
 logger = logging.getLogger(__name__)

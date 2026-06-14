@@ -46,7 +46,6 @@ tasktracker/
 │   ├── rbac/                # Role-based access control
 │   │   ├── models.py        # Role, AccessRule, UserRole
 │   │   ├── permissions.py   # RBACPermission + check_access()
-│   │   ├── middleware.py    # Optional: attach user roles to request
 │   │   ├── views.py         # Admin API: roles, access rules
 │   │   ├── serializers.py
 │   │   └── urls.py
