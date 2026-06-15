@@ -141,23 +141,34 @@ Use `?page=N` to navigate. Requesting a page beyond the last page returns `404 {
 
 ## Error Responses
 
-Phase 1 uses **DRF defaults** for most errors. Some RBAC write paths return a custom `{"error": "..."}` body — see below.
+Most error responses use **DRF defaults**. Some admin/RBAC and business-resource
+views additionally return a custom `{"error": "..."}` body for certain 404
+(not found) and 400 (validation) cases — see below.
 
 ```json
 // 401 — missing/invalid JWT (DRF/SimpleJWT default)
 {"detail": "Authentication credentials were not provided."}
 
-// 403 — RBACPermission denied (typical)
+// 403 — RBACPermission denied (has_permission or has_object_permission)
 {"detail": "Permission denied. Required: task:read"}
 
-// 403 — explicit check in some views (tasks, projects, rbac writes)
-{"error": "Permission denied. Required: task:create"}
+// 404 — DRF default for unmatched URL
+{"detail": "Not found."}
+
+// 404 — custom, used by Task/Project/User detail and RBAC admin views
+{"error": "Not found"}
+// or, for role-scoped lookups (AccessRule/UserRole admin endpoints):
+{"error": "Role not found"}
+{"error": "User not found"}
 
 // 400 — serializer validation (DRF default)
 {"email": ["This field is required."]}
 
 // 400 — non-field validation
 {"non_field_errors": ["Invalid email or password."]}
+
+// 400 — custom, duplicate AccessRule for (role, resource)
+{"error": "AccessRule for resource 'task' already exists for this role."}
 ```
 
 **Success messages (non-error):**

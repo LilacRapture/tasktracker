@@ -239,7 +239,10 @@ correctly limits results to their own tasks.
 class TaskDetailView(APIView):
     permission_classes = [IsAuthenticated, RBACPermission]
     rbac_resource = "task"
-    rbac_action = "update"   # RBACPermission will pass obj.owner_id automatically
+    rbac_action = "auto"   # GET→read, PATCH/PUT→update, DELETE→delete (via _method_to_action)
+
+    def get_rbac_owner_id(self, request, obj):
+        return obj.owner_id
 ```
 
 ---

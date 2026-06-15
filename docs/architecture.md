@@ -16,8 +16,8 @@ TaskTracker is an API-only backend that provides:
 | Auth tokens | djangorestframework-simplejwt |
 | Database | PostgreSQL 16 |
 | Config | python-decouple (.env) |
-| Containerization | Docker + docker-compose (Phase 2 — not set up yet) |
-| API docs | drf-spectacular (Phase 2) |
+| Containerization | Docker + docker-compose |
+| API docs | drf-spectacular |
 
 ## Project Layout
 
@@ -33,32 +33,53 @@ tasktracker/
 │   ├── users/               # Custom User model, profile endpoints
 │   │   ├── models.py        # User (AbstractBaseUser + PermissionsMixin for admin)
 │   │   ├── managers.py      # UserManager
+│   │   ├── admin.py
 │   │   ├── serializers.py
 │   │   ├── views.py         # Profile CRUD, soft delete
-│   │   └── urls.py
+│   │   ├── urls.py
+│   │   ├── migrations/
+│   │   └── tests/
 │   │
 │   ├── auth_core/           # Auth flow (register, login, logout, token refresh)
 │   │   ├── views.py
 │   │   ├── serializers.py
 │   │   ├── tokens.py        # JWT helpers
-│   │   └── urls.py
+│   │   ├── urls.py
+│   │   └── tests/
 │   │
 │   ├── rbac/                # Role-based access control
 │   │   ├── models.py        # Role, AccessRule, UserRole
 │   │   ├── permissions.py   # RBACPermission + check_access()
-│   │   ├── views.py         # Admin API: roles, access rules
+│   │   ├── admin.py
+│   │   ├── views.py         # Admin API: roles, access rules, user role assignment
 │   │   ├── serializers.py
-│   │   └── urls.py
+│   │   ├── urls.py
+│   │   ├── management/commands/seed_roles.py
+│   │   ├── migrations/
+│   │   └── tests/
 │   │
-│   ├── tasks/               # Task business domain
-│   │   ├── views.py         # Phase 1: mock. Phase 2: real CRUD
+│   ├── tasks/                # Task business domain
+│   │   ├── models.py
+│   │   ├── admin.py
+│   │   ├── filters.py        # django-filter FilterSet (ADR-010)
 │   │   ├── serializers.py
-│   │   └── urls.py
+│   │   ├── views.py          # ListCreateAPIView + APIView detail (ADR-009)
+│   │   ├── urls.py
+│   │   ├── migrations/
+│   │   └── tests/
 │   │
-│   └── projects/            # Project business domain
-│       ├── views.py
-│       ├── serializers.py
-│       └── urls.py
+│   ├── projects/             # Project business domain
+│   │   ├── models.py
+│   │   ├── admin.py
+│   │   ├── filters.py
+│   │   ├── serializers.py
+│   │   ├── views.py
+│   │   ├── urls.py
+│   │   ├── migrations/
+│   │   └── tests/
+│   │
+│   └── common/                # Shared DRF helpers
+│       └── schema.py          # ErrorResponseSerializer, DetailResponseSerializer (ADR-011)
 │
 ├── docs/
 │   ├── architecture.md      # This file
@@ -66,12 +87,18 @@ tasktracker/
 │   ├── rbac-schema.md       # RBAC DB schema (canonical)
 │   └── api.md               # Endpoint reference
 │
+├── manage.py
+├── conftest.py               # pytest fixtures: roles, role-specific users, auth_client
 ├── AGENTS.md                # AI agent instructions
 ├── .cursor/rules/project.mdc  # Cursor IDE rules (see AGENTS.md)
 ├── .python-version          # pyenv / local Python pin (3.12)
-├── pyproject.toml           # requires-python pin (3.12.x)
+├── pyproject.toml           # requires-python pin (3.12.x), pytest/ruff config
 ├── .env.example
-├── docker-compose.yml       # Phase 2 (Dockerfile not added yet)
+├── Dockerfile
+├── entrypoint.sh             # waits for db, migrate, seed_roles, collectstatic (ADR-013)
+├── docker-compose.yml
+├── .dockerignore
+├── .github/workflows/tests.yml  # CI: ruff, schema validate, pytest, coverage
 └── requirements.txt
 ```
 
