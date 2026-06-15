@@ -13,9 +13,13 @@ psycopg2-binary==2.9.12
 # Config
 python-decouple==3.8
 
-# Dev / Phase 2
+# Dev
 drf-spectacular==0.27.2
 pytest-cov==5.0.0
 pytest==8.2.2
 pytest-django==4.8.0
 ruff==0.6.9
+
+# Production server / static files
+gunicorn==22.0.0
+whitenoise==6.7.0
