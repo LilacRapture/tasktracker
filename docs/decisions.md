@@ -290,6 +290,68 @@ identically to "has can_X_all", and the gap has no effect today.
 
 ---
 
+## ADR-013 — Docker deploy: gunicorn + whitenoise + entrypoint-driven migrations
+
+**Date:** 2026-06-15
+**Status:** Accepted
+
+**Decision:** Run the `web` service via `gunicorn` (not `manage.py runserver`).
+Static files (admin, Swagger UI) are served by `whitenoise`
+(`WhiteNoiseMiddleware` + `STORAGES["staticfiles"]` =
+`CompressedManifestStaticFilesStorage`) from inside the same container —
+no separate nginx service. An `entrypoint.sh` in the image waits for
+Postgres (`pg_isready`), runs `manage.py migrate`, `manage.py seed_roles`,
+and `manage.py collectstatic`, then `exec`s the container's CMD
+(`gunicorn ...`).
+
+In `docker-compose.yml`: `db` gets a `pg_isready` healthcheck; `web`
+depends on it via `condition: service_healthy`. `DB_HOST` is overridden
+to `db` via `environment:` on `web` (the shared `.env` keeps
+`DB_HOST=localhost` for non-Docker local runs). The bind mount `.:/app`
+and the published `5432` port on `db` were removed — `web` runs from the
+image's copy of the code, and Postgres is only reachable on the internal
+compose network.
+
+**Context:** `docker-compose.yml` existed but was unconfigured
+(`command: runserver`, no Dockerfile, `DEBUG`-only static serving, no
+migration step). Needed a one-command (`docker-compose up --build`) deploy
+suitable for a portfolio demo without introducing infrastructure that's
+disproportionate to the project's scope.
+
+**Alternatives considered:**
+- nginx reverse proxy serving static/media from a shared volume — more
+  "production-grade" and would demonstrate multi-container orchestration,
+  but adds a second Dockerfile/config and a shared volume for one small
+  admin/Swagger static set; deferred, can be added later (e.g. alongside
+  TLS/a real domain) without changing the Django-side setup.
+- Separate one-off `migrate` service / init container with
+  `depends_on: condition: service_completed_successfully` — the "correct"
+  pattern for multi-replica `web`, but unnecessary for a single instance;
+  adds a second service definition for no current benefit.
+- Manual migration step (`docker-compose exec web python manage.py
+  migrate`) — simplest to implement, but breaks the "one command starts
+  everything" demo experience and is easy to forget.
+
+**Consequences:**
+- `requirements.txt`: added `gunicorn`, `whitenoise`.
+- New files: `Dockerfile`, `entrypoint.sh`, `.dockerignore`.
+- `config/settings.py`: added `WhiteNoiseMiddleware` (right after
+  `SecurityMiddleware`), `STATIC_ROOT`, `STORAGES["staticfiles"]`.
+  `DEFAULT_AUTO_FIELD` moved out of the (now reworked) "Static files"
+  comment block into its own section — no behavior change, just
+  relocated.
+- `.env.example`: documented that `DB_HOST=localhost` is for non-Docker
+  runs and is overridden to `db` in `docker-compose.yml`.
+- `seed_roles` runs on every container start; safe because it's
+  idempotent (`get_or_create` / `update_or_create`).
+- README should be updated with the `docker-compose up --build` flow as
+  the recommended setup path (alongside the existing local/venv
+  instructions).
+- If a custom domain + TLS is added later, this likely warrants its own
+  ADR (nginx/Traefik/Caddy as reverse proxy in front of `web`).
+
+---
+
 ## Template for new ADRs
 
 ```

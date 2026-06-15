@@ -14,7 +14,30 @@ API backend for task/project management with custom JWT authentication and owner
 - PostgreSQL 16
 - Config via `.env` (`python-decouple`)
 
-## Local setup
+## Quick start (Docker)
+
+Requires Docker and Docker Compose.
+
+```bash
+cp .env.example .env   # edit SECRET_KEY and DB_* as needed
+docker-compose up --build
+```
+
+This builds the image, starts PostgreSQL, waits for it to be ready,
+applies migrations, seeds RBAC roles, collects static files, and starts
+the API via gunicorn.
+
+API base: `http://localhost:8000/api/`
+Admin: `http://localhost:8000/admin/`
+API docs (Swagger): `http://localhost:8000/api/docs/`
+
+Create an admin user for `/admin/`:
+
+```bash
+docker-compose exec web python manage.py createsuperuser
+```
+
+## Local development (without Docker)
 
 Requires **Python 3.12** (see `.python-version` and `pyproject.toml`). Use 3.12 explicitly — **not 3.13 or 3.14** (Django admin form issues on newer versions).
 
@@ -51,7 +74,3 @@ API docs (Swagger): `http://localhost:8000/api/docs/`
 | [docs/rbac-schema.md](docs/rbac-schema.md) | **Canonical RBAC spec** |
 | [docs/api.md](docs/api.md) | HTTP endpoint reference |
 | [docs/decisions.md](docs/decisions.md) | Architecture decision records |
-
-## Docker
-
-`docker-compose.yml` is reserved for Phase 2. A `Dockerfile` is not included yet — use local setup above for now.

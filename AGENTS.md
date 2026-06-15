@@ -118,11 +118,23 @@ See `docs/api.md` for response shapes.
 - [x] RBAC admin API (roles, access rules, user role assignment)
 - [x] Mock task/project views with RBAC
 
-### Phase 2 — Next
+### Phase 2 — Done
 - [x] Real Task/Project models and full CRUD
 - [x] Filtering, pagination, search
 - [x] Tests, Swagger (drf-spectacular)
-- [ ] Docker + deploy (`docker-compose.yml` exists but is not configured yet)
+- [x] Docker + deploy
+
+## Phase 3 (candidates — not committed yet)
+
+- API response shape consistency: `/users/`, `/rbac/roles/`,
+  `/rbac/roles/{id}/rules/` still return flat arrays vs. paginated
+  `{count, next, previous, results}` for `/tasks/` and `/projects/`
+  (see ADR-009)
+- Object-level RBAC checks for role/access_rule/user admin endpoints —
+  currently endpoint-level only, safe under current seed data (ADR-012)
+- nginx/TLS reverse proxy in front of `web` if a real domain is added
+  (see ADR-013 consequences)
+- CORS config (`django-cors-headers`) if a separate frontend is built
 
 ### Open Questions
 - Nothing yet

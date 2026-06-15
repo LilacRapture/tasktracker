@@ -152,7 +152,6 @@ See `docs/rbac-schema.md` for full RBAC field types and seed data.
 - `rbac_accessrule`
 - `rbac_userrole`
 
-**Business domain (Phase 2):**
+**Business domain:**
 - `tasks_task`
 - `projects_project`
-- `tasks_comment`
