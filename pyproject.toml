@@ -12,6 +12,7 @@ addopts = "--cov=apps --cov-report=term-missing --cov-report=xml"
 line-length = 100
 target-version = "py312"
 exclude = ["*/migrations/*"]
+required-version = ">=0.15.22,<0.16"
 
 [tool.ruff.lint]
 select = [
