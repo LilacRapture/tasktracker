@@ -352,6 +352,77 @@ disproportionate to the project's scope.
 
 ---
 
+## ADR-014 — Realtime transport: Django Channels + WS envelope + ticket-based auth
+
+**Date:** 2026-07-28
+**Status:** Accepted
+
+**Decision:** Add `django-channels` + `channels-redis` for WebSocket
+support, running as a separate ASGI process alongside the existing
+gunicorn/WSGI deployment (see Consequences for deploy implications,
+tracked separately). Three sub-decisions bundled together since they
+were designed and will evolve as one unit:
+
+1. **Single WS endpoint, envelope format.** One endpoint
+   (`/ws/tasktracker/`) carries all event types via a versioned envelope:
+   `{"v": 1, "type": "task.updated", "payload": {...}}`. Rejected
+   separate per-stream endpoints (`/ws/tasks/`, `/ws/presence/`) —
+   presence and task events belong to the same "board" concept, and a
+   single connection is simpler for the frontend's reconnect logic.
+
+2. **Per-user channel groups (`user_{id}`), not per-project groups.**
+   On any task create/update/delete, the backend computes the list of
+   users who can see that object via the EXISTING `get_accessible_queryset`
+   / `check_access` (apps/rbac/permissions.py) and broadcasts to each
+   user's personal group. Rejected per-project groups — `Task.project`
+   is nullable (`SET_NULL`), so project-less tasks would need special-case
+   handling; rejected client-side filtering entirely — sending
+   unfiltered events to all connected clients and trusting the frontend
+   to hide them is a real data leak (a viewer would receive task
+   payloads for tasks they have no RBAC access to, even if the UI never
+   renders them).
+
+3. **One-time WS ticket instead of a raw access token in the query
+   string.** Browsers' native WebSocket API cannot send custom headers,
+   so some form of credential must travel in the connection URL.
+   Passing the 15-minute access token directly risks it being logged by
+   intermediate proxies/nginx access logs. Instead: an authenticated
+   REST endpoint `POST /api/auth/ws-ticket/` issues a short-lived
+   (~20s), single-use ticket stored in Redis (`SETEX ws_ticket:{ticket}
+   20 {user_id}`); the WS handshake carries only this ticket
+   (`/ws/tasktracker/?ticket=...`), and Channels middleware
+   atomically reads-and-deletes it (GETDEL, or GET+DEL as fallback) to
+   resolve the user and enforce one-time use.
+
+**Alternatives considered:**
+- Raw access token in query string — simplest, rejected due to
+  proxy/access-log exposure risk.
+- Per-project channel groups — rejected due to nullable `Task.project`
+  requiring special-case handling for project-less tasks.
+- Unfiltered broadcast + client-side filtering — rejected as an RBAC
+  leak.
+
+**Consequences:**
+- Redis is now a required dependency for TaskTracker (previously
+  Postgres-only) — used for both the Channels layer AND ws-ticket
+  storage.
+- Requires an ASGI-capable process (daphne/uvicorn) running alongside
+  the existing gunicorn/WSGI process — deploy/nginx-routing changes are
+  tracked as a separate phase (see AGENTS.md Phase 3 candidates: nginx
+  reverse proxy), not bundled into this ADR.
+- Task write paths (`TaskWriteSerializer.create`/`update`) gain an
+  explicit call to broadcast the event after `.save()` — a deliberate
+  choice over a `post_save` signal, to keep the side effect visible at
+  the call site rather than an implicit signal handler (see
+  AGENTS.md's "no business logic in views" — this extends the same
+  preference for explicitness to signals).
+- Computing "who can see this task" on every write is an extra query
+  cost (iterates AccessRule/UserRole) — acceptable at this project's
+  scale; would need revisiting (e.g. caching accessible-user-sets per
+  role) if user count grew significantly.
+
+---
+
 ## Template for new ADRs
 
 ```
