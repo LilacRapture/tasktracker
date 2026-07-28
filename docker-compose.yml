@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   db:
     image: postgres:16
@@ -14,6 +12,16 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+  
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   web:
     build: .
@@ -21,10 +29,11 @@ services:
       - .env
     environment:
       DB_HOST: db
-    ports:
-      - "8000:8000"
+      REDIS_HOST: redis
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
 volumes:
