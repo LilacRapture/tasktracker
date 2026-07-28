@@ -1,9 +1,9 @@
 import logging
+from urllib.parse import parse_qs
 
 from channels.db import database_sync_to_async
 from django.contrib.auth import get_user_model
 from django.core.cache import caches
-from urllib.parse import parse_qs
 
 User = get_user_model()
 logger = logging.getLogger(__name__)

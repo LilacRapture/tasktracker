@@ -1,12 +1,11 @@
 import pytest
+from channels.routing import URLRouter
 from channels.testing import WebsocketCommunicator
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 
-from apps.realtime.middleware import TICKET_CACHE_PREFIX
+from apps.realtime.middleware import TICKET_CACHE_PREFIX, TicketAuthMiddleware
 from apps.realtime.routing import websocket_urlpatterns
-from apps.realtime.middleware import TicketAuthMiddleware
-from channels.routing import URLRouter
 
 User = get_user_model()
 

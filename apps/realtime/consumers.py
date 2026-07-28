@@ -1,4 +1,3 @@
-import json
 import logging
 
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
