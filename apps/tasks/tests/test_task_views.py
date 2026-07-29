@@ -1,5 +1,11 @@
 import pytest
+from channels.db import database_sync_to_async
+from channels.routing import URLRouter
+from channels.testing import WebsocketCommunicator
+from django.core.cache import cache
 
+from apps.realtime.middleware import TICKET_CACHE_PREFIX, TicketAuthMiddleware
+from apps.realtime.routing import websocket_urlpatterns
 from apps.tasks.models import Task
 
 pytestmark = pytest.mark.django_db
@@ -289,4 +295,52 @@ def test_order_tasks_by_due_date(auth_client, admin_user, tasks_for_filtering):
     assert response.status_code == 200
     due_dates = [t["due_date"] for t in response.json()["results"]]
     assert due_dates == sorted(due_dates)
+
+# ---------------------------------------------------------------------------
+# broadcast integration
+# ---------------------------------------------------------------------------
+
+def _build_ws_application():
+    return TicketAuthMiddleware(URLRouter(websocket_urlpatterns))
+
+
+async def _connect_as(user):
+    ticket = f"ws-test-{user.pk}"
+    await database_sync_to_async(cache.set)(f"{TICKET_CACHE_PREFIX}{ticket}", user.pk, timeout=20)
+    communicator = WebsocketCommunicator(_build_ws_application(), f"/ws/tasktracker/?ticket={ticket}")
+    connected, _ = await communicator.connect()
+    assert connected is True
+    return communicator
+
+
+@pytest.mark.django_db(transaction=True)
+async def test_creating_task_via_api_broadcasts_task_created(developer_user, auth_client):
+    communicator = await _connect_as(developer_user)
+
+    client = await database_sync_to_async(auth_client)(developer_user)
+    response = await database_sync_to_async(client.post)("/api/tasks/", {"title": "WS-triggered task"})
+    assert response.status_code == 201
+
+    event = await communicator.receive_json_from(timeout=1)
+    assert event["type"] == "task.created"
+    assert event["payload"]["title"] == "WS-triggered task"
+
+    await communicator.disconnect()
+    await communicator.wait(timeout=1)
+
+
+@pytest.mark.django_db(transaction=True)
+async def test_deleting_task_via_api_broadcasts_task_deleted(developer_user, developer_task, auth_client):
+    communicator = await _connect_as(developer_user)
+
+    client = await database_sync_to_async(auth_client)(developer_user)
+    response = await database_sync_to_async(client.delete)(f"/api/tasks/{developer_task.id}/")
+    assert response.status_code == 204
+
+    event = await communicator.receive_json_from(timeout=1)
+    assert event["type"] == "task.deleted"
+    assert event["payload"]["id"] == developer_task.id
+
+    await communicator.disconnect()
+    await communicator.wait(timeout=1)
     

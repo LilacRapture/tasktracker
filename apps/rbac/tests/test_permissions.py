@@ -72,21 +72,6 @@ def user_for_role(admin_user, manager_user, developer_user, viewer_user):
     }
 
 
-@pytest.fixture
-def stranger_user(roles):
-    """
-    A user with NO roles assigned. Used purely as an "other owner" —
-    its pk must differ from the user under test, and it has no AccessRules
-    itself so it can't accidentally satisfy has_any_access/check_access.
-    """
-    return User.objects.create_user(
-        email="stranger@example.com",
-        password="testpass123",
-        first_name="Stranger",
-        last_name="User",
-    )
-
-
 # ---------------------------------------------------------------------------
 # has_any_access — endpoint-level gate (list/create)
 # ---------------------------------------------------------------------------

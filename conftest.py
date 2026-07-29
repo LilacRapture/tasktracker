@@ -56,6 +56,23 @@ def viewer_user(roles):
 
 
 @pytest.fixture
+def stranger_user(roles):
+    """
+    A user with NO roles assigned. Used as an "other owner" or as a
+    baseline "must never gain access" case in RBAC/realtime tests —
+    its pk differs from any role-bearing fixture user, and it has no
+    AccessRules of its own so it can't accidentally satisfy
+    has_any_access/check_access/broadcast recipient computation.
+    """
+    return User.objects.create_user(
+        email="stranger@example.com",
+        password="testpass123",
+        first_name="Stranger",
+        last_name="User",
+    )
+
+
+@pytest.fixture
 def auth_client(api_client):
     """Returns a function: auth_client(user) -> APIClient with Bearer token set."""
     def _authenticate(user):
