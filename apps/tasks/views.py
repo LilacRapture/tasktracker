@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 
 from apps.common.schema import ErrorResponseSerializer
 from apps.rbac.permissions import RBACPermission, get_accessible_queryset
+from apps.realtime.broadcaster import broadcast_task_event
 
 from .filters import TaskFilter
 from .models import Task
@@ -100,6 +101,7 @@ class TaskDetailView(APIView):
         obj = self._get_object(request, pk)
         if obj is None:
             return Response({"error": "Not found"}, status=status.HTTP_404_NOT_FOUND)
+        broadcast_task_event(obj, "task.deleted")  # before .delete() — need owner_id/id still populated
         obj.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
         

@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from apps.projects.models import Project
+from apps.realtime.broadcaster import broadcast_task_event
 
 from .models import Task
 
@@ -81,6 +82,7 @@ class TaskWriteSerializer(serializers.ModelSerializer):
         validated_data["owner"] = self.context["request"].user
         task = Task.objects.create(**validated_data)
         logger.info("Task created: %s (owner=%s)", task.title, task.owner.email)
+        broadcast_task_event(task, "task.created")
         return task
 
     def update(self, instance: Task, validated_data: dict) -> Task:
@@ -88,5 +90,6 @@ class TaskWriteSerializer(serializers.ModelSerializer):
             setattr(instance, attr, value)
         instance.save(update_fields=[*validated_data.keys(), "updated_at"])
         logger.info("Task updated: %s (id=%s)", instance.title, instance.pk)
+        broadcast_task_event(instance, "task.updated")
         return instance
         
