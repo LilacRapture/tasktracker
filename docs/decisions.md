@@ -423,6 +423,69 @@ were designed and will evolve as one unit:
 
 ---
 
+## ADR-015 — Broadcast recipient computation duplicates check_access() precedence for O(1) queries
+
+**Date:** 2026-07-28
+**Status:** Accepted
+
+**Decision:** `apps/realtime/broadcaster._users_with_task_access()` computes
+which users should receive a task.{created,updated,deleted} WS event by
+directly querying for `can_read_all` holders plus the task's owner (if
+they hold `can_read`) — two set-based queries total — rather than
+iterating every active user and calling the existing `check_access()`
+per user.
+
+**Context:** ADR-014 established per-user channel groups (`user_{id}`),
+which means broadcasting a task event requires answering "which users
+can currently read this task?" on every write. The natural first
+implementation iterated `User.objects.filter(is_active=True)` and
+called `check_access(user, "task", "read", obj_owner_id=task.owner_id)`
+for each — reusing the exact same logic as the REST API's authorization
+checks. That approach is O(2N+1) queries per broadcast (N = active user
+count): one query to list users, then two more per user inside
+`check_access` (role lookup + AccessRule lookup). At even a moderate
+user count this becomes the dominant cost of every task write.
+
+**Alternatives considered:**
+- **Reuse `check_access()` per user (rejected as primary approach)** —
+  single source of truth for the read-access rule, zero duplication,
+  but O(2N+1) queries scales linearly with user count and was
+  immediately apparent as a bottleneck even at pet-project scale, given
+  WS testing already involves multiple concurrent role-based clients.
+- **Cache `can_read_all` holders in Redis with invalidation on
+  role/rule changes** — would cut query cost further, but requires
+  wiring cache invalidation into `UserRoleListView`/`AccessRuleDetailView`
+  writes; deferred as a follow-up optimization if user count or write
+  frequency ever justifies it (see Consequences).
+- **Two-query direct computation (chosen)** — mirrors `check_access`'s
+  own precedence (`can_read_all` OR (own AND `can_read`)) but expressed
+  as two queries independent of user count.
+
+**Consequences:**
+- The precedence rule (`can_read_all` grants access regardless of
+  ownership; `can_read` only grants access to the object's own owner)
+  now exists in two places: `apps/rbac/permissions.check_access()` (the
+  canonical implementation, used by all REST endpoints) and
+  `apps/realtime/broadcaster._users_with_task_access()` (duplicated for
+  performance). **If `docs/rbac-schema.md`'s access model ever gains a
+  third tier or changes the read-access precedence, both places must be
+  updated together** — this duplication is the explicit tradeoff for
+  avoiding O(N) queries per broadcast.
+- `_users_with_task_access()` is scoped to `resource="task"` only; if
+  broadcast support is extended to `project` or other resources, this
+  function (or a generalized version of it) needs the same duplication
+  repeated, or a shared helper factored out at that point.
+- `.distinct()` is applied to both underlying queries as a defensive
+  measure against join fan-out when a user holds multiple roles that
+  each grant matching AccessRule flags — verified via a regression test
+  (`test_recipients_contain_no_duplicates_when_user_has_multiple_qualifying_roles`).
+- If Redis-backed caching of `can_read_all` holders is added later (see
+  rejected alternative above), it layers on top of this same two-query
+  shape rather than replacing it — the direct-computation version
+  remains the fallback / cache-miss path.
+
+---
+
 ## Template for new ADRs
 
 ```
