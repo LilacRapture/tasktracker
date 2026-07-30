@@ -19,6 +19,7 @@ Auth header (all protected routes): `Authorization: Bearer <access_token>`
 | POST | `/auth/login/` | public | — | Login; returns user + JWT pair (200) |
 | POST | `/auth/logout/` | bearer | — | Blacklist refresh token (body: `{"refresh": "..."}`) |
 | POST | `/auth/refresh/` | public | — | New access token (SimpleJWT; body: `{"refresh": "..."}`) |
+| POST | `/auth/ws-ticket/` | bearer | — | Issue one-time WS ticket (TTL 20s) for `/ws/tasktracker/` handshake
 
 **Register / login success (shape):**
 

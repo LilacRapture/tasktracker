@@ -43,10 +43,7 @@ access token (avoids the token being logged by intermediate proxies).
    connection right after issuance, short enough to limit exposure if
    logged anywhere unexpected
 
-**Status:** the issuing endpoint (`POST /api/auth/ws-ticket/`) is not
-yet implemented — see AGENTS.md Phase 4 checklist. Tickets are
-currently created manually via `cache.set()` in a Django shell for
-testing.
+**Status:** Implemented (`apps/auth_core/views.py::WsTicketView`).
 
 ## Channel Groups
 

@@ -114,7 +114,7 @@ ticket auth)
       TaskTrackerConsumer echo)
 - [x] Task write paths broadcast task.{created,updated,deleted} to
       RBAC-scoped recipients (per-user channel groups)
-- [ ] `POST /api/auth/ws-ticket/` — issue one-time WS tickets
+- [x] `POST /api/auth/ws-ticket/` — issue one-time WS tickets
 - [ ] Presence: user_joined/user_left, editing_started/editing_stopped
 - [ ] nginx routing for `/ws/` alongside gunicorn, and TLS
 - [ ] CORS config (`django-cors-headers`) for the separate SvelteKit frontend
