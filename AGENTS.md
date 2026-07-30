@@ -105,17 +105,29 @@ See `docs/api.md` for response shapes.
 - [x] Tests, Swagger (drf-spectacular)
 - [x] Docker + deploy
 
-## Phase 3 (candidates — not committed yet)
+## Phase 3 — Realtime (WebSocket) — In Progress
 
+**Canonical spec:** `docs/realtime.md` (envelope format, channel groups,
+ticket auth)
+
+- [x] Channels ASGI skeleton + Redis channel layer (ticket-auth middleware,
+      TaskTrackerConsumer echo)
+- [x] Task write paths broadcast task.{created,updated,deleted} to
+      RBAC-scoped recipients (per-user channel groups)
+- [ ] `POST /api/auth/ws-ticket/` — issue one-time WS tickets
+- [ ] Presence: user_joined/user_left, editing_started/editing_stopped
+- [ ] nginx routing for `/ws/` alongside gunicorn, and TLS
+- [ ] CORS config (`django-cors-headers`) for the separate SvelteKit frontend
+- [ ] SvelteKit frontend (separate repo) consuming both REST + WS
+
+### Open Questions
+
+- Presence state storage: Redis TTL-based heartbeat vs. simpler
+  connect/disconnect-only tracking — decide before Presence work starts
 - API response shape consistency: `/users/`, `/rbac/roles/`,
   `/rbac/roles/{id}/rules/` still return flat arrays vs. paginated
   `{count, next, previous, results}` for `/tasks/` and `/projects/`
-  (see ADR-009)
+  (see ADR-009) — not currently planned, revisit if it becomes relevant
 - Object-level RBAC checks for role/access_rule/user admin endpoints —
   currently endpoint-level only, safe under current seed data (ADR-012)
-- nginx/TLS reverse proxy in front of `web` if a real domain is added
-  (see ADR-013 consequences)
-- CORS config (`django-cors-headers`) if a separate frontend is built
-
-### Open Questions
-- Nothing yet
+  — not currently planned, revisit if seed roles change

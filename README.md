@@ -74,3 +74,4 @@ API docs (Swagger): `http://localhost:8000/api/docs/`
 | [docs/rbac-schema.md](docs/rbac-schema.md) | **Canonical RBAC spec** |
 | [docs/api.md](docs/api.md) | HTTP endpoint reference |
 | [docs/decisions.md](docs/decisions.md) | Architecture decision records |
+| [docs/realtime.md](docs/realtime.md) | WebSocket/realtime spec |

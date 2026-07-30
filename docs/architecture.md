@@ -57,6 +57,13 @@ tasktracker/
 │   │   ├── management/commands/seed_roles.py
 │   │   ├── migrations/
 │   │   └── tests/
+│   ├── realtime/              # WebSocket realtime layer
+│   │   ├── consumers.py       # TaskTrackerConsumer
+│   │   ├── middleware.py      # TicketAuthMiddleware
+│   │   ├── broadcaster.py     # broadcast_task_event, RBAC-scoped recipients
+│   │   ├── routing.py
+│   │   ├── migrations/        # (none yet — no models)
+│   │   └── tests/
 │   │
 │   ├── tasks/                # Task business domain
 │   │   ├── models.py
@@ -182,3 +189,7 @@ See `docs/rbac-schema.md` for full RBAC field types and seed data.
 **Business domain:**
 - `tasks_task`
 - `projects_project`
+
+**Realtime domain (Redis, not Postgres):**
+- Channel layer (Redis pub/sub, `channels-redis`)
+- One-time WS tickets (`ws_ticket:{ticket}` keys, TTL-based)
