@@ -1,5 +1,7 @@
 import logging
+import secrets
 
+from django.core.cache import cache
 from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import serializers, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -9,9 +11,12 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from apps.common.schema import DetailResponseSerializer
+from apps.realtime.middleware import TICKET_CACHE_PREFIX
 
 from .serializers import LoginSerializer, LogoutSerializer, RegisterSerializer, UserBriefSerializer
 from .tokens import generate_jwt_pair
+
+WS_TICKET_TTL_SECONDS = 20
 
 logger = logging.getLogger(__name__)
 
@@ -128,4 +133,33 @@ class TokenRefreshView(TokenRefreshView):
     Subclassed here so it lives under our urls and can be extended later.
     """
     pass
-    
+
+
+class WsTicketView(APIView):
+    """
+    POST /api/auth/ws-ticket/
+
+    Protected endpoint. Issues a short-lived, single-use ticket for
+    authenticating the WebSocket handshake (see docs/realtime.md,
+    ADR-014) — browsers' native WebSocket API can't send an
+    Authorization header, so this ticket travels in the connection URL
+    instead of the raw access token.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        responses={
+            200: inline_serializer(
+                name="WsTicketResponse",
+                fields={"ticket": serializers.CharField()},
+            ),
+        },
+    )
+    def post(self, request: Request) -> Response:
+        ticket = secrets.token_urlsafe(32)
+        cache.set(f"{TICKET_CACHE_PREFIX}{ticket}", request.user.pk, timeout=WS_TICKET_TTL_SECONDS)
+
+        logger.info("WS ticket issued for user %s", request.user.email)
+
+        return Response({"ticket": ticket}, status=status.HTTP_200_OK)
