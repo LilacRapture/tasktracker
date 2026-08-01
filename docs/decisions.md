@@ -486,6 +486,41 @@ user count this becomes the dominant cost of every task write.
 
 ---
 
+## ADR-016 — Presence via connect/disconnect only, no Redis TTL heartbeat
+
+**Date:** 2026-07-28
+**Status:** Accepted
+
+**Decision:** Presence (user_joined/user_left) is derived purely from
+WS connect()/disconnect() lifecycle events, broadcast to a single
+shared group (PRESENCE_GROUP). No Redis-backed TTL/heartbeat mechanism
+tracks presence independently of the live WS connection.
+
+**Alternatives considered:**
+- Redis TTL heartbeat — rejected for now; would survive ASGI process
+  restarts and allow presence queries via plain REST without an open
+  WS, but adds a client-side heartbeat protocol, TTL-based state with
+  its own potential to diverge from the actual WS connection state, and
+  time-dependent tests. Revisit if presence state proves unreliable
+  across deploys/restarts in practice.
+
+**Consequences:**
+- **Known gap:** a client that disappears without a clean WS close
+  frame (hard OS crash, killed process, some abrupt network failures)
+  may not trigger disconnect() promptly — or, in rare cases, at all,
+  depending on the ASGI server's TCP-level detection — leaving that
+  user shown as "online" longer than accurate. Accepted: the cost of
+  this staleness is low (a presence indicator, not task data), and this
+  is a portfolio/demo project, not a production system with SLA
+  requirements around presence accuracy.
+- If the backend process restarts (deploy, crash), all WS connections
+  drop and presence resets to empty until clients reconnect — there is
+  no persisted presence state to restore from.
+- `editing_started`/`editing_stopped` reuse `_users_with_task_access`
+  for recipient computation.
+
+---
+
 ## Template for new ADRs
 
 ```

@@ -22,10 +22,32 @@ All messages — in both directions — use a versioned envelope:
 | `task.created` | server → client | Implemented |
 | `task.updated` | server → client | Implemented |
 | `task.deleted` | server → client | Implemented |
-| `presence.joined` | server → client | Planned |
-| `presence.left` | server → client | Planned |
-| `presence.editing_started` | client → server | Planned |
-| `presence.editing_stopped` | client → server | Planned |
+| `presence.joined` | server → client | Implemented |
+| `presence.left` | server → client | Implemented |
+| `presence.editing_started` | client → server | Implemented |
+| `presence.editing_stopped` | client → server | Implemented |
+
+## Presence Details
+
+**Self-echo suppression (`user_joined`/`user_left`):** `group_send` fans
+out to every member of `PRESENCE_GROUP`, including the connection that
+just triggered the event — without suppression, a client would receive
+its own `presence.joined`/`presence.left`. `TaskTrackerConsumer.broadcast_event`
+checks an optional `sender_channel` key on the group-send payload against
+`self.channel_name` and skips delivery when they match. `broadcaster.py`'s
+task/editing broadcasts never set `sender_channel`, so this only affects
+the two presence lifecycle events — they're the only ones sent to a
+group the sender is also a member of.
+
+**RBAC scoping (`editing_started`/`editing_stopped`):** unlike
+`joined`/`left` (sent to everyone in `PRESENCE_GROUP` unscoped — see
+Channel Groups above), editing events reveal which specific task is
+being worked on, which is task-level content. They reuse
+`_users_with_task_access` (the same recipient computation as
+`broadcast_task_event`, see ADR-015) via
+`broadcast_presence_editing_event` — a user who can't read the task
+never learns it's being edited, regardless of whether they're connected
+and listening on `PRESENCE_GROUP`.
 
 ## Authentication
 
