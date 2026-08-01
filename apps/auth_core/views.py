@@ -149,6 +149,7 @@ class WsTicketView(APIView):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
+        request=None,
         responses={
             200: inline_serializer(
                 name="WsTicketResponse",
