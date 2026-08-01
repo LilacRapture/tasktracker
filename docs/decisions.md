@@ -521,6 +521,54 @@ tracks presence independently of the live WS connection.
 
 ---
 
+## ADR-017 — nginx reverse proxy + CORS for the separate SvelteKit frontend
+
+**Date:** 2026-08-01
+**Status:** Accepted
+
+**Decision:** Add an nginx reverse proxy in front of two backend
+processes (`web` — gunicorn/WSGI, `web_ws` — daphne/ASGI), routing
+`/ws/` to the ASGI process and everything else to WSGI. Add
+`django-cors-headers` with an explicit `CORS_ALLOWED_ORIGINS` whitelist
+(not `CORS_ALLOW_ALL_ORIGINS`).
+
+**Context:** Both were tracked as Phase 3 candidates contingent on "if
+a real domain is added" / "if a separate frontend is built" — the
+SvelteKit frontend decision made both concrete. The realtime work
+(ADR-014) already required an ASGI-capable process (daphne) running
+alongside gunicorn; nginx is the natural place to route between them
+without exposing two separate ports to the frontend.
+
+**Alternatives considered:**
+- Single container running both gunicorn and daphne via supervisord —
+  rejected for now: requires Dockerfile/entrypoint.sh changes and
+  supervisord config for a memory saving that doesn't matter at this
+  project's scale; two docker-compose services with the same image and
+  different `command:` is simpler and doesn't touch the existing,
+  already-documented (ADR-013) Dockerfile/entrypoint.
+- `CORS_ALLOW_ALL_ORIGINS = True` — rejected; an explicit whitelist
+  costs one `.env` line and is safer by default, even though JWT-in-header
+  auth (not cookies) already limits CSRF exposure compared to
+  cookie-based sessions.
+
+**Consequences:**
+- `web` and `web_ws` share the same image/entrypoint.sh, which runs
+  `migrate`/`seed_roles`/`collectstatic` on every container start — if
+  both start simultaneously this runs twice concurrently. Accepted for
+  now since Django migrations and `seed_roles` (via `get_or_create`)
+  are idempotent; revisit with a dedicated lightweight entrypoint for
+  `web_ws` if this ever causes a real race in practice.
+- `docker-compose.yml`'s `web` service no longer exposes a port
+  directly — only `nginx` does (`8000:80`). Local development URLs stay
+  the same (`http://localhost:8000/api/...`) since nginx proxies `/`
+  through to `web` unchanged.
+- `CORS_ALLOWED_ORIGINS` defaults to `http://localhost:5173` (Vite/
+  SvelteKit's default dev port) — works out of the box for local
+  frontend development without `.env` changes; production origins need
+  to be added explicitly when a real frontend domain exists.
+
+---
+
 ## Template for new ADRs
 
 ```

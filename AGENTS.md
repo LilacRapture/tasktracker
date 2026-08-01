@@ -116,8 +116,8 @@ ticket auth)
       RBAC-scoped recipients (per-user channel groups)
 - [x] `POST /api/auth/ws-ticket/` — issue one-time WS tickets
 - [x] Presence: user_joined/user_left, editing_started/editing_stopped
-- [ ] nginx routing for `/ws/` alongside gunicorn, and TLS
-- [ ] CORS config (`django-cors-headers`) for the separate SvelteKit frontend
+- [x] nginx routing for `/ws/` alongside gunicorn, and TLS
+- [x] CORS config (`django-cors-headers`) for the separate SvelteKit frontend
 - [ ] SvelteKit frontend (separate repo) consuming both REST + WS
 
 ### Open Questions
