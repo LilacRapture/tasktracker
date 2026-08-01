@@ -79,3 +79,35 @@ def broadcast_task_event(task: Task, event_type: str) -> None:
         "Broadcast %s for task=%s to %d recipient(s)",
         event_type, task.id, len(recipients),
     )
+
+
+def broadcast_presence_editing_event(task: Task, editing_user, event_type: str) -> None:
+    """
+    Sends a presence.editing_started/editing_stopped envelope to every
+    user who can read this task — same recipient set as
+    broadcast_task_event, since revealing that someone is editing a
+    specific task also reveals the task's existence, which is
+    task-level RBAC content, not bare presence.
+    """
+    channel_layer = get_channel_layer()
+    envelope = {
+        "v": PROTOCOL_VERSION,
+        "type": event_type,
+        "payload": {
+            "task_id": task.id,
+            "user_id": editing_user.pk,
+            "email": editing_user.email,
+        },
+    }
+
+    recipients = _users_with_task_access(task)
+    for user in recipients:
+        async_to_sync(channel_layer.group_send)(
+            f"user_{user.pk}",
+            {"type": "broadcast_event", "envelope": envelope},
+        )
+
+    logger.debug(
+        "Broadcast %s for task=%s (by user=%s) to %d recipient(s)",
+        event_type, task.id, editing_user.email, len(recipients),
+    )
