@@ -247,6 +247,19 @@ class TaskDetailView(APIView):
 
 ---
 
+## Self-Service Capabilities
+
+`GET /api/users/me/capabilities/` — IsAuthenticated only, no
+RBACPermission (mirrors `/users/me/`'s "read my own data" pattern, not
+"read the role resource"). Returns the requesting user's role names
+plus merged (OR'd across all assigned roles) AccessRule flags per
+resource, via `apps.rbac.permissions.get_user_capabilities()`. Intended
+for frontend clients to derive UI visibility without needing to know
+role names or duplicate precedence logic — see the tasktracker-frontend
+repo's AGENTS.md for how it's consumed.
+
+---
+
 ## Admin API Endpoints
 
 Only accessible to users with the required **AccessRule** flags on the `role` or `access_rule` resource:

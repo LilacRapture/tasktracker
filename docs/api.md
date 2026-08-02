@@ -50,6 +50,7 @@ Auth header (all protected routes): `Authorization: Bearer <access_token>`
 | GET | `/users/{id}/roles/` | bearer | `role` / `read` | List user's roles |
 | POST | `/users/{id}/roles/` | bearer | `role` / `create` | Assign role (`{"role_id": 1}`) |
 | DELETE | `/users/{id}/roles/{role_id}/` | bearer | `role` / `delete` | Remove role from user |
+| GET | `/users/me/capabilities/` | bearer | — | Get own merged capability flags per resource (OR'd across all assigned roles) — used by the frontend for capability-based UI gating |
 
 > **UserRole assignment:** `POST` / `DELETE` on `/users/{id}/roles/` manage **UserRole** join rows, gated by AccessRule flags on the `role` resource. Implemented via `AssignRoleSerializer` and `UserRoleListView` / `UserRoleDetailView` in `apps/rbac/views.py`.
 
