@@ -1,15 +1,15 @@
 import logging
 
 from django.contrib.auth import get_user_model
-from drf_spectacular.utils import extend_schema
-from rest_framework import status
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.common.schema import ErrorResponseSerializer
-from apps.rbac.permissions import RBACPermission
+from apps.rbac.permissions import RBACPermission, get_user_capabilities
 
 from .models import AccessRule, Role, UserRole
 from .serializers import (
@@ -262,4 +262,66 @@ class UserRoleDetailView(APIView):
             return Response({"error": "Not found"}, status=status.HTTP_404_NOT_FOUND)
         user_role.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ---------------------------------------------------------------------------
+# My Capabilities
+# ---------------------------------------------------------------------------
+
+class MyCapabilitiesView(APIView):
+    """
+    GET /api/users/me/capabilities/
+
+    Returns the requesting user's own role names and merged (OR'd
+    across all roles) capability flags per resource — see
+    get_user_capabilities() docstring for the "why merged, not raw
+    roles" rationale.
+
+    Deliberately uses only IsAuthenticated, not RBACPermission — this
+    is "read my own effective permissions", not "read the role
+    resource" (which is what /rbac/roles/ gates on, admin-only per seed
+    data). Mirrors apps/users/views.py::MeView's same pattern for
+    self-service endpoints.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        responses={
+            200: inline_serializer(
+                name="MyCapabilitiesResponse",
+                fields={
+                    "roles": serializers.ListField(child=serializers.CharField()),
+                    "capabilities": inline_serializer(
+                        name="CapabilitiesByResource",
+                        fields={
+                            resource: inline_serializer(
+                                name=f"{resource.title().replace('_', '')}Capabilities",
+                                fields={
+                                    "can_read": serializers.BooleanField(),
+                                    "can_read_all": serializers.BooleanField(),
+                                    "can_create": serializers.BooleanField(),
+                                    "can_update": serializers.BooleanField(),
+                                    "can_update_all": serializers.BooleanField(),
+                                    "can_delete": serializers.BooleanField(),
+                                    "can_delete_all": serializers.BooleanField(),
+                                },
+                            )
+                            for resource, _ in AccessRule.RESOURCE_CHOICES
+                        },
+                    ),
+                },
+            ),
+        },
+    )
+    def get(self, request: Request) -> Response:
+        roles = list(
+            Role.objects.filter(user_roles__user=request.user)
+            .values_list("name", flat=True)
+            .distinct()
+        )
+        return Response({
+            "roles": roles,
+            "capabilities": get_user_capabilities(request.user),
+        })
         

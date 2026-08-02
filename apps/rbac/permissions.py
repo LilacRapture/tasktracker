@@ -1,5 +1,6 @@
 import logging
 
+from django.contrib.postgres.aggregates import BoolOr
 from django.db.models import Q
 from rest_framework.permissions import BasePermission
 from rest_framework.request import Request
@@ -147,6 +148,60 @@ def get_accessible_queryset(user, resource: str, action: str, queryset):
         return queryset.filter(owner=user)
 
     return queryset.none()
+
+
+def _empty_capabilities() -> dict:
+    return {
+        "can_read": False,
+        "can_read_all": False,
+        "can_create": False,
+        "can_update": False,
+        "can_update_all": False,
+        "can_delete": False,
+        "can_delete_all": False,
+    }
+
+
+def get_user_capabilities(user) -> dict:
+    """
+    Merged (OR'd across all of the user's roles) AccessRule flags per
+    resource — the same underlying data has_any_access()/check_access()
+    query, just exposed as a read-only view of "what can I do" rather
+    than a permission gate. Used by GET /api/users/me/capabilities/ so
+    the frontend can derive its own UI visibility without needing to
+    know role names (see that endpoint's docstring for the full
+    rationale — avoids duplicating RBAC precedence logic client-side).
+
+    Uses Postgres's BOOL_OR aggregate to merge across roles in a
+    single query rather than iterating roles in Python.
+    """
+    result = {resource: _empty_capabilities() for resource, _ in AccessRule.RESOURCE_CHOICES}
+
+    if not user or not user.is_active:
+        return result
+
+    user_role_ids = _user_role_ids(user)
+    if not user_role_ids:
+        return result
+
+    rows = (
+        AccessRule.objects.filter(role_id__in=user_role_ids)
+        .values("resource")
+        .annotate(
+            can_read=BoolOr("can_read"),
+            can_read_all=BoolOr("can_read_all"),
+            can_create=BoolOr("can_create"),
+            can_update=BoolOr("can_update"),
+            can_update_all=BoolOr("can_update_all"),
+            can_delete=BoolOr("can_delete"),
+            can_delete_all=BoolOr("can_delete_all"),
+        )
+    )
+
+    for row in rows:
+        result[row["resource"]] = {k: v for k, v in row.items() if k != "resource"}
+
+    return result
 
 
 class RBACPermission(BasePermission):
