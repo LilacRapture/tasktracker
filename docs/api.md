@@ -1,6 +1,6 @@
 # API Reference — TaskTracker
 
-> Update this file every time you add or change an endpoint.
+> Update this file when you add or change an endpoint. CI validates the Swagger schema, not this file — keep both in sync.
 > RBAC column values are `resource` / `action` as checked by `check_access()` — see `docs/rbac-schema.md`.
 
 Base URL: `http://localhost:8000/api/`
@@ -18,8 +18,10 @@ Auth header (all protected routes): `Authorization: Bearer <access_token>`
 | POST | `/auth/register/` | public | — | Register; returns user + JWT pair (201) |
 | POST | `/auth/login/` | public | — | Login; returns user + JWT pair (200) |
 | POST | `/auth/logout/` | bearer | — | Blacklist refresh token (body: `{"refresh": "..."}`) |
-| POST | `/auth/refresh/` | public | — | New access token (SimpleJWT; body: `{"refresh": "..."}`) |
-| POST | `/auth/ws-ticket/` | bearer | — | Issue one-time WS ticket (TTL 20s) for `/ws/tasktracker/` handshake
+| POST | `/auth/refresh/` | public | — | Rotate tokens: returns new `access` and new `refresh` (body: `{"refresh": "..."}`) |
+| POST | `/auth/ws-ticket/` | bearer | — | Issue one-time WS ticket (TTL 20 s): `{"ticket": "..."}` — see `docs/realtime.md` |
+
+**Refresh rotation:** every refresh call returns a new `refresh` token and blacklists the submitted one; reusing it returns 401. Clients must store the new refresh token and send the latest one to `/auth/logout/`.
 
 **Register / login success (shape):**
 
@@ -45,20 +47,34 @@ Auth header (all protected routes): `Authorization: Bearer <access_token>`
 | GET | `/users/me/` | bearer | — | Get own profile (any authenticated user) |
 | PATCH | `/users/me/` | bearer | — | Update own profile (`first_name`, `last_name`, `middle_name`) |
 | DELETE | `/users/me/` | bearer | — | Soft-delete own account (`is_active=False`); optional `refresh` in body to blacklist |
-| GET | `/users/` | bearer | `user` / `read` | List users (needs `can_read_all` on `user`) |
-| GET | `/users/{id}/` | bearer | `user` / `read` | Get user detail |
+| GET | `/users/me/capabilities/` | bearer | — | Own roles + merged (OR'd across roles) capability flags per resource, for UI gating |
+| GET | `/users/` | bearer | `user` / `read` | List active users (flat array, not paginated) |
+| GET | `/users/{id}/` | bearer | `user` / `read` | Get active user's profile |
 | GET | `/users/{id}/roles/` | bearer | `role` / `read` | List user's roles |
 | POST | `/users/{id}/roles/` | bearer | `role` / `create` | Assign role (`{"role_id": 1}`) |
 | DELETE | `/users/{id}/roles/{role_id}/` | bearer | `role` / `delete` | Remove role from user |
-| GET | `/users/me/capabilities/` | bearer | — | Get own merged capability flags per resource (OR'd across all assigned roles) — used by the frontend for capability-based UI gating |
 
-> **UserRole assignment:** `POST` / `DELETE` on `/users/{id}/roles/` manage **UserRole** join rows, gated by AccessRule flags on the `role` resource. Implemented via `AssignRoleSerializer` and `UserRoleListView` / `UserRoleDetailView` in `apps/rbac/views.py`.
+Role assignment is gated by the `role` resource, not `user`.
+
+**Capabilities response (shape):**
+
+```json
+{
+  "roles": ["developer"],
+  "capabilities": {
+    "task": {"can_read": true, "can_read_all": true, "can_create": true, "...": "..."},
+    "project": {"...": "..."}
+  }
+}
+```
+
+`capabilities` has one entry per resource (`task`, `project`, `user`, `role`, `access_rule`), each with the seven `can_*` flags.
 
 ---
 
 ## RBAC (`/api/rbac/`)
 
-Requires appropriate flags on the `role` or `access_rule` resource (typically admin). See `docs/rbac-schema.md` for admin endpoints.
+Admin endpoints; need flags on the `role` or `access_rule` resource (admin only in the seed data). Lists are flat arrays.
 
 | Method | Endpoint | Auth | RBAC | Description |
 |--------|----------|------|------|-------------|
@@ -109,15 +125,15 @@ Requires appropriate flags on the `role` or `access_rule` resource (typically ad
 }
 ```
 
-Use `?page=N` to navigate. Requesting a page beyond the last page returns `404 {"detail": "Invalid page."}`.
+Use `?page=N`. A page beyond the last returns `404 {"detail": "Invalid page."}`.
 
 ---
 
 ## Filtering & Search
 
-`GET /tasks/` and `GET /projects/` support filtering, full-text search, and ordering via query params. Filters apply *after* RBAC row-level access — they can only narrow results you're already allowed to see, never expand them.
+`GET /tasks/` and `GET /projects/` support filtering, search, and ordering via query params. They apply *after* RBAC row-level access: they can only narrow results you're already allowed to see.
 
-### Tasks (`/api/tasks/`)
+### Tasks
 
 | Param | Type | Example |
 |-------|------|---------|
@@ -130,7 +146,7 @@ Use `?page=N` to navigate. Requesting a page beyond the last page returns `404 {
 | `search` | text, matches `title` or `description` | `?search=report` |
 | `ordering` | field, prefix `-` for descending | `?ordering=-due_date` (allowed: `created_at`, `due_date`, `title`, `status`) |
 
-### Projects (`/api/projects/`)
+### Projects
 
 | Param | Type | Example |
 |-------|------|---------|
@@ -143,24 +159,21 @@ Use `?page=N` to navigate. Requesting a page beyond the last page returns `404 {
 
 ## Error Responses
 
-Most error responses use **DRF defaults**. Some admin/RBAC and business-resource
-views additionally return a custom `{"error": "..."}` body for certain 404
-(not found) and 400 (validation) cases — see below.
+Most errors use **DRF defaults**. Detail and RBAC admin views additionally return a custom `{"error": "..."}` body for some 404 and 400 cases.
 
 ```json
-// 401 — missing/invalid JWT (DRF/SimpleJWT default)
+// 401 — missing/invalid JWT, or a blacklisted refresh token
 {"detail": "Authentication credentials were not provided."}
 
-// 403 — RBACPermission denied (has_permission or has_object_permission)
+// 403 — RBACPermission denied
 {"detail": "Permission denied. Required: task:read"}
 
-// 404 — DRF default for unmatched URL
+// 404 — unmatched URL (DRF default)
 {"detail": "Not found."}
 
-// 404 — custom, used by Task/Project/User detail and RBAC admin views
+// 404 — custom: Task/Project/User detail and RBAC admin views
 {"error": "Not found"}
-// or, for role-scoped lookups (AccessRule/UserRole admin endpoints):
-{"error": "Role not found"}
+{"error": "Role not found"}   // role-scoped lookups
 {"error": "User not found"}
 
 // 400 — serializer validation (DRF default)
@@ -169,16 +182,13 @@ views additionally return a custom `{"error": "..."}` body for certain 404
 // 400 — non-field validation
 {"non_field_errors": ["Invalid email or password."]}
 
-// 400 — custom, duplicate AccessRule for (role, resource)
+// 400 — custom: duplicate AccessRule for (role, resource)
 {"error": "AccessRule for resource 'task' already exists for this role."}
 ```
 
-**Success messages (non-error):**
+**Success messages:**
 
 ```json
-// Logout
-{"detail": "Successfully logged out."}
-
-// Soft delete
-{"detail": "Account deactivated successfully."}
+{"detail": "Successfully logged out."}               // POST /auth/logout/
+{"detail": "Account deactivated successfully."}      // DELETE /users/me/
 ```

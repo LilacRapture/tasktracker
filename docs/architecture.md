@@ -77,7 +77,7 @@ rbac_action = "auto"   # derived from the HTTP method; or an explicit action
 
 ## Authentication
 
-Short-lived access token + refresh token; logout blacklists the refresh token. Django sessions are used for `/admin/` only (ADR-002). Endpoint shapes: `docs/api.md`. WebSocket handshake auth: `docs/realtime.md`.
+Short-lived access token + rotating refresh token (each refresh blacklists the previous one); logout blacklists the refresh token. Django sessions are used for `/admin/` only (ADR-002). Endpoint shapes: `docs/api.md`. WebSocket handshake auth: `docs/realtime.md`.
 
 ## Data Stores
 
