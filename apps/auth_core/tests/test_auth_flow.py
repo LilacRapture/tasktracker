@@ -238,6 +238,23 @@ def test_refresh_returns_new_access_token(api_client):
     assert "access" in response.json()
 
 
+def test_refresh_rotates_refresh_token(api_client):
+    user = User.objects.create_user(
+        email="rotateuser@example.com",
+        password="StrongPass123!",
+        first_name="Rotate",
+        last_name="User",
+    )
+    refresh = RefreshToken.for_user(user)
+
+    response = api_client.post(REFRESH_URL, {"refresh": str(refresh)})
+    assert response.status_code == 200
+    assert response.json()["refresh"] != str(refresh)
+
+    reuse = api_client.post(REFRESH_URL, {"refresh": str(refresh)})
+    assert reuse.status_code == 401
+
+
 def test_refresh_with_invalid_token(api_client):
     response = api_client.post(REFRESH_URL, {"refresh": "not-a-real-token"})
     assert response.status_code == 401
