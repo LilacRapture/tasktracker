@@ -21,12 +21,13 @@
 3. **JWT auth for the API.** Clients authenticate with `Authorization: Bearer <token>` via `djangorestframework-simplejwt`. DRF must not use session authentication on API views. Django's session middleware may remain for the built-in admin site only.
 4. **App separation.** Each Django app has a single responsibility:
    - `users` — User model, profile CRUD
-   - `auth_core` — login, logout, register, token endpoints
+   - `auth_core` — login, logout, register, token endpoints, WS ticket
    - `rbac` — Role, AccessRule, UserRole models + enforcement logic
    - `tasks` — Task model and CRUD
    - `projects` — Project model and CRUD
+   - `realtime` — WebSocket consumer, ticket auth middleware, RBAC-scoped broadcasts (`docs/realtime.md`)
    - `common` — shared DRF helpers (OpenAPI response shapes)
-5. **Config lives in `config/`.** Not in any app. `settings.py`, `urls.py`, `wsgi.py` are all there.
+5. **Config lives in `config/`.** Not in any app. `settings.py`, `urls.py`, `wsgi.py`, `asgi.py` are all there.
 6. **Env vars for secrets.** Never hardcode DB credentials, secret keys, or JWT secrets. Use `.env` + `python-decouple`.
 7. **Python 3.12 only.** Pinned in `.python-version` and `pyproject.toml` (`requires-python = ">=3.12,<3.13"`). Do not use 3.13+ — Django admin issues were seen on 3.14.
 
@@ -117,7 +118,15 @@ When in doubt, leave it out.
 - [x] Tests, Swagger (drf-spectacular)
 - [x] Docker + deploy
 
-### Phase 3 (candidates — not committed yet)
+### Phase 3 — Realtime and frontend integration
+- [x] WebSocket transport with one-time ticket auth (ADR-014)
+- [x] RBAC-scoped task broadcasts (ADR-015)
+- [x] Presence and editing events (ADR-016)
+- [x] nginx reverse proxy + CORS for the SvelteKit frontend (ADR-017)
+- [x] `GET /api/users/me/capabilities/` for capability-based UI gating
+- [ ] Real-Redis integration test for cross-process broadcast
+
+### Later (candidates — not committed yet)
 
 - API response shape consistency: `/users/`, `/rbac/roles/`,
   `/rbac/roles/{id}/rules/` still return flat arrays vs. paginated
@@ -125,9 +134,7 @@ When in doubt, leave it out.
   (see ADR-009)
 - Object-level RBAC checks for role/access_rule/user admin endpoints —
   currently endpoint-level only, safe under current seed data (ADR-012)
-- nginx/TLS reverse proxy in front of `web` if a real domain is added
-  (see ADR-013 consequences)
-- CORS config (`django-cors-headers`) if a separate frontend is built
+- TLS/domain for the nginx proxy if a real domain is added
 
 ### Open Questions
 - Nothing yet
