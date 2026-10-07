@@ -22,12 +22,7 @@ logger = logging.getLogger(__name__)
 
 
 class RegisterView(APIView):
-    """
-    POST /api/auth/register/
-
-    Public endpoint. Creates a new user account.
-    Returns user data and JWT token pair so the user is immediately logged in.
-    """
+    """Creates an account and returns the user with a JWT pair."""
 
     permission_classes = [AllowAny]
 
@@ -61,11 +56,7 @@ class RegisterView(APIView):
 
 
 class LoginView(APIView):
-    """
-    POST /api/auth/login/
-
-    Public endpoint. Validates credentials and returns JWT token pair.
-    """
+    """Validates credentials and returns the user with a JWT pair."""
 
     permission_classes = [AllowAny]
 
@@ -100,12 +91,7 @@ class LoginView(APIView):
 
 
 class LogoutView(APIView):
-    """
-    POST /api/auth/logout/
-
-    Protected endpoint. Blacklists the refresh token.
-    The client should also discard the access token locally.
-    """
+    """Blacklists the refresh token. The client should also discard its access token."""
 
     permission_classes = [IsAuthenticated]
 
@@ -125,27 +111,15 @@ class LogoutView(APIView):
 
 
 class TokenRefreshView(TokenRefreshView):
-    """
-    POST /api/auth/refresh/
+    """Rotates tokens: returns a new access and refresh token, and blacklists the submitted refresh token."""
 
-    Public endpoint. Returns a new access token given a valid refresh token.
-    Inherits from SimpleJWT's TokenRefreshView — no custom logic needed.
-    Subclassed here so it lives under our urls and can be extended later.
-    """
-    pass
+    # Subclassed only so the route is declared in our urls.py; no custom logic.
 
 
 class WsTicketView(APIView):
-    """
-    POST /api/auth/ws-ticket/
+    """Issues a short-lived, single-use ticket for the WebSocket handshake (`?ticket=`)."""
 
-    Protected endpoint. Issues a short-lived, single-use ticket for
-    authenticating the WebSocket handshake (see docs/realtime.md,
-    ADR-014) — browsers' native WebSocket API can't send an
-    Authorization header, so this ticket travels in the connection URL
-    instead of the raw access token.
-    """
-
+    # Browsers can't send an Authorization header on a WebSocket; see ADR-014.
     permission_classes = [IsAuthenticated]
 
     @extend_schema(

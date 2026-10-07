@@ -8,11 +8,6 @@ logger = logging.getLogger(__name__)
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
-    """
-    Full user profile. Used for GET /users/me/ and GET /users/{id}/
-    Read-only — use UserUpdateSerializer for updates.
-    """
-
     full_name = serializers.CharField(read_only=True)
 
     class Meta:
@@ -32,11 +27,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):
-    """
-    Allows user to update their own profile.
-    Email and password are intentionally excluded —
-    those require separate dedicated endpoints.
-    """
+    """Own-profile update: names only. Email and password can't be changed here."""
 
     class Meta:
         model = User
@@ -51,11 +42,6 @@ class UserUpdateSerializer(serializers.ModelSerializer):
 
 
 class UserListSerializer(serializers.ModelSerializer):
-    """
-    Brief user representation for list endpoints.
-    Used by admin/manager when listing all users.
-    """
-
     full_name = serializers.CharField(read_only=True)
 
     class Meta:

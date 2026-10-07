@@ -4,19 +4,13 @@ from typing import TYPE_CHECKING
 from django.contrib.auth.models import BaseUserManager
 
 if TYPE_CHECKING:
-    # Avoids circular import: models.py imports UserManager from this module,
-    # so a real top-level import of User here would fail at runtime.
+    # models.py imports UserManager from this module, so a runtime import of User would be circular.
     from .models import User
 
 logger = logging.getLogger(__name__)
 
 
 class UserManager(BaseUserManager):
-    """
-    Custom manager for User model where email is the unique identifier
-    instead of username.
-    """
-
     def create_user(
         self,
         email: str,
@@ -26,7 +20,6 @@ class UserManager(BaseUserManager):
         middle_name: str = "",
         **extra_fields,
     ) -> "User":
-        """Create and return a regular user."""
         if not email:
             raise ValueError("Email is required")
         if not password:
@@ -42,7 +35,7 @@ class UserManager(BaseUserManager):
             middle_name=middle_name,
             **extra_fields,
         )
-        user.set_password(password)  # hashes the password
+        user.set_password(password)
         user.save(using=self._db)
         logger.info("Created new user: %s", email)
         return user
@@ -55,7 +48,6 @@ class UserManager(BaseUserManager):
         last_name: str = "User",
         **extra_fields,
     ) -> "User":
-        """Create and return a superuser (for Django admin access)."""
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
 

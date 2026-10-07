@@ -12,12 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class RegisterSerializer(serializers.ModelSerializer):
-    """
-    Validates and creates a new user account.
-
-    Accepts: email, password, password_confirm, first_name, last_name, middle_name
-    Returns: user data (no password)
-    """
+    """Creates a user account; `password` must match `password_confirm`."""
 
     password = serializers.CharField(
         write_only=True,
@@ -38,18 +33,16 @@ class RegisterSerializer(serializers.ModelSerializer):
         ]
 
     def validate(self, attrs: dict) -> dict:
-        """Check that both passwords match."""
         if attrs["password"] != attrs["password_confirm"]:
             raise serializers.ValidationError({"password": "Passwords do not match."})
         return attrs
 
     def create(self, validated_data: dict) -> User:
-        """Remove password_confirm and create user via manager."""
         validated_data.pop("password_confirm")
         password = validated_data.pop("password")
 
         user = User(**validated_data)
-        user.set_password(password)  # hashes via AbstractBaseUser
+        user.set_password(password)
         user.save()
 
         logger.info("Registered new user: %s", user.email)
@@ -57,12 +50,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
 
 class LoginSerializer(serializers.Serializer):
-    """
-    Validates login credentials and returns JWT token pair.
-
-    Accepts: email, password
-    Returns: access token, refresh token, basic user info
-    """
+    """Validates credentials; returns the user with a JWT pair."""
 
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
@@ -71,29 +59,24 @@ class LoginSerializer(serializers.Serializer):
         email = attrs["email"].lower().strip()
         password = attrs["password"]
 
-        # Look up user by email
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
-            # Same error message for both "no user" and "wrong password"
-            # to avoid leaking which emails are registered
+            # Same message for "no user" and "wrong password" so registered emails don't leak.
             raise serializers.ValidationError(
                 {"non_field_errors": ["Invalid email or password."]}
             )
 
-        # Check password
         if not user.check_password(password):
             raise serializers.ValidationError(
                 {"non_field_errors": ["Invalid email or password."]}
             )
 
-        # Soft-deleted users cannot log in
         if not user.is_active:
             raise serializers.ValidationError(
                 {"non_field_errors": ["This account has been deactivated."]}
             )
 
-        # Generate JWT pair
         tokens = generate_jwt_pair(user)
 
         logger.info("User logged in: %s", user.email)
@@ -105,12 +88,7 @@ class LoginSerializer(serializers.Serializer):
 
 
 class LogoutSerializer(serializers.Serializer):
-    """
-    Accepts a refresh token and blacklists it.
-
-    After this the refresh token can no longer be used to get new access tokens.
-    The access token will expire naturally (15 min by default).
-    """
+    """Blacklists the given refresh token. The access token stays valid until it expires."""
 
     refresh = serializers.CharField()
 
@@ -119,7 +97,6 @@ class LogoutSerializer(serializers.Serializer):
         return attrs
 
     def save(self, **kwargs) -> None:
-        """Blacklist the refresh token."""
         try:
             token = RefreshToken(self.token)
             token.blacklist()
@@ -129,11 +106,6 @@ class LogoutSerializer(serializers.Serializer):
 
 
 class UserBriefSerializer(serializers.ModelSerializer):
-    """
-    Brief user representation returned after login/register.
-    Never includes password.
-    """
-
     full_name = serializers.CharField(read_only=True)
 
     class Meta:

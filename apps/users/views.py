@@ -1,5 +1,3 @@
-import logging
-
 from django.contrib.auth import get_user_model
 from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import serializers, status
@@ -15,15 +13,10 @@ from apps.rbac.permissions import RBACPermission
 from .serializers import UserListSerializer, UserProfileSerializer, UserUpdateSerializer
 
 User = get_user_model()
-logger = logging.getLogger(__name__)
 
 
 class MeView(APIView):
-    """
-    GET  /api/users/me/    — get own profile
-    PATCH /api/users/me/   — update own profile
-    DELETE /api/users/me/  — soft-delete own account + logout
-    """
+    """Your own profile: read it, update your names, or deactivate the account."""
 
     permission_classes = [IsAuthenticated]
 
@@ -51,10 +44,7 @@ class MeView(APIView):
         responses={200: DetailResponseSerializer},
     )
     def delete(self, request: Request) -> Response:
-        """
-        Soft-delete: sets is_active=False and blacklists the refresh token.
-        User will not be able to log in again, but the record stays in DB.
-        """
+        """Deactivate your account (soft delete). An optional `refresh` token in the body is blacklisted."""
         user = request.user
 
         refresh_token = request.data.get("refresh")
@@ -63,6 +53,7 @@ class MeView(APIView):
                 token = RefreshToken(refresh_token)
                 token.blacklist()
             except Exception:
+                # An invalid or expired token must not block deactivation.
                 pass
 
         user.soft_delete()
@@ -74,12 +65,7 @@ class MeView(APIView):
 
 
 class UserListView(APIView):
-    """
-    GET /api/users/
-
-    Returns list of all users.
-    Requires: user:read (can_read_all — admin or manager level)
-    """
+    """List active users."""
 
     permission_classes = [IsAuthenticated, RBACPermission]
     rbac_resource = "user"
@@ -93,12 +79,7 @@ class UserListView(APIView):
 
 
 class UserDetailView(APIView):
-    """
-    GET /api/users/{id}/
-
-    Returns a specific user's profile.
-    Requires: user:read
-    """
+    """Profile of an active user."""
 
     permission_classes = [IsAuthenticated, RBACPermission]
     rbac_resource = "user"
@@ -115,4 +96,3 @@ class UserDetailView(APIView):
             )
         serializer = UserProfileSerializer(user)
         return Response(serializer.data)
-        

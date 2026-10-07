@@ -8,7 +8,6 @@ logger = logging.getLogger(__name__)
 
 
 def generate_jwt_pair(user: User) -> dict:
-    """Generate access + refresh JWT pair for a user."""
     refresh = RefreshToken.for_user(user)
     logger.debug("Generated JWT pair for user %s", user.email)
     return {
