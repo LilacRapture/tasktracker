@@ -137,7 +137,7 @@
 - `apps/common/schema.py` holds shared `ErrorResponse` / `DetailResponse` shapes for the `{"error"}` / `{"detail"}` conventions.
 - `ENUM_NAME_OVERRIDES` separates `Task.status` from `Project.status`; explicit `operation_id` on `RoleListView.get` and `UserListView.get` avoids `*_retrieve` name collisions.
 - CI runs `spectacular --validate --fail-on-warn`: a new unannotated view or enum collision fails the build.
-- View docstrings become Swagger descriptions, so write them for API consumers.
+- View and serializer docstrings become Swagger descriptions, so write them for API consumers.
 - `schema.yaml` is generated and not committed.
 
 ---

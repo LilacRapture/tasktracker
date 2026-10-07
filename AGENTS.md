@@ -69,9 +69,9 @@ When in doubt, leave it out.
   narrating the next line; no explaining Django/DRF/stdlib behavior.
 - A docstring is optional when the name and fields are self-explanatory.
   Default length: one line. No Args/Returns blocks that repeat type hints.
-- View docstrings are published in Swagger (drf-spectacular): write them for
-  the API consumer in 1–2 lines. No URL/verb lists, no internals — put those
-  in comments.
+- View and serializer docstrings are published in Swagger (drf-spectacular):
+  write them for the API consumer in 1–2 lines. No URL/verb lists, no
+  internals — put those in comments.
 - Don't restate facts owned elsewhere: role names, permissions, settings
   values (token lifetimes), routes. Link to the source instead.
 - No banner/section comments inside classes. Add `logger` only to modules
