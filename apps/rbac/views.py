@@ -1,5 +1,3 @@
-import logging
-
 from django.contrib.auth import get_user_model
 from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import serializers, status
@@ -22,18 +20,12 @@ from .serializers import (
 )
 
 User = get_user_model()
-logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# Roles
-# ---------------------------------------------------------------------------
+# --- Roles ---
 
 class RoleListView(APIView):
-    """
-    GET  /api/rbac/roles/  — list all roles
-    POST /api/rbac/roles/  — create a new role
-    """
+    """List roles with their access rules, or create a role."""
 
     permission_classes = [IsAuthenticated, RBACPermission]
     rbac_resource = "role"
@@ -53,11 +45,7 @@ class RoleListView(APIView):
 
 
 class RoleDetailView(APIView):
-    """
-    GET    /api/rbac/roles/{id}/  — role detail
-    PATCH  /api/rbac/roles/{id}/  — update role name/description
-    DELETE /api/rbac/roles/{id}/  — delete role
-    """
+    """Retrieve, update, or delete a role."""
 
     permission_classes = [IsAuthenticated, RBACPermission]
     rbac_resource = "role"
@@ -98,15 +86,10 @@ class RoleDetailView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-# ---------------------------------------------------------------------------
-# Access Rules per Role
-# ---------------------------------------------------------------------------
+# --- Access rules per role ---
 
 class AccessRuleListView(APIView):
-    """
-    GET  /api/rbac/roles/{role_id}/rules/  — list access rules for a role
-    POST /api/rbac/roles/{role_id}/rules/  — create access rule for a resource
-    """
+    """List or create access rules for a role (one rule per resource)."""
 
     permission_classes = [IsAuthenticated, RBACPermission]
     rbac_resource = "access_rule"
@@ -154,10 +137,7 @@ class AccessRuleListView(APIView):
 
 
 class AccessRuleDetailView(APIView):
-    """
-    PATCH  /api/rbac/roles/{role_id}/rules/{resource}/  — update rule booleans
-    DELETE /api/rbac/roles/{role_id}/rules/{resource}/  — remove rule entirely
-    """
+    """Update or delete a role's access rule for a resource."""
 
     permission_classes = [IsAuthenticated, RBACPermission]
     rbac_resource = "access_rule"
@@ -191,15 +171,10 @@ class AccessRuleDetailView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-# ---------------------------------------------------------------------------
-# User Role Assignment
-# ---------------------------------------------------------------------------
+# --- User role assignment ---
 
 class UserRoleListView(APIView):
-    """
-    GET  /api/users/{user_id}/roles/  — list roles assigned to a user
-    POST /api/users/{user_id}/roles/  — assign a role to a user
-    """
+    """List the roles of a user, or assign a role to them."""
 
     permission_classes = [IsAuthenticated, RBACPermission]
     rbac_resource = "role"
@@ -246,9 +221,7 @@ class UserRoleListView(APIView):
 
 
 class UserRoleDetailView(APIView):
-    """
-    DELETE /api/users/{user_id}/roles/{role_id}/  — remove a role from a user
-    """
+    """Remove a role from a user."""
 
     permission_classes = [IsAuthenticated, RBACPermission]
     rbac_resource = "role"
@@ -264,26 +237,13 @@ class UserRoleDetailView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-# ---------------------------------------------------------------------------
-# My Capabilities
-# ---------------------------------------------------------------------------
+# --- Own capabilities ---
 
 class MyCapabilitiesView(APIView):
-    """
-    GET /api/users/me/capabilities/
+    """Your role names and capability flags per resource, merged (OR) across roles, for UI gating."""
 
-    Returns the requesting user's own role names and merged (OR'd
-    across all roles) capability flags per resource — see
-    get_user_capabilities() docstring for the "why merged, not raw
-    roles" rationale.
-
-    Deliberately uses only IsAuthenticated, not RBACPermission — this
-    is "read my own effective permissions", not "read the role
-    resource" (which is what /rbac/roles/ gates on, admin-only per seed
-    data). Mirrors apps/users/views.py::MeView's same pattern for
-    self-service endpoints.
-    """
-
+    # IsAuthenticated only: "read my own effective permissions" is not the `role` resource,
+    # which /rbac/roles/ gates on. Same pattern as MeView.
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
@@ -324,4 +284,3 @@ class MyCapabilitiesView(APIView):
             "roles": roles,
             "capabilities": get_user_capabilities(request.user),
         })
-        

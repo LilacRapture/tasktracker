@@ -16,16 +16,9 @@ def _user_role_ids(user):
 
 
 def has_any_access(user, resource: str, action: str) -> bool:
-    """
-    List/create-level gate.
+    """Endpoint-level gate: any `can_{action}` / `can_{action}_all` flag (`can_create` for create).
 
-    Returns True if the user has ANY relevant flag for (resource, action) —
-    i.e. can_{action} OR can_{action}_all for read/update/delete,
-    or can_create for create.
-
-    This does NOT determine *which* objects the user can see/modify —
-    that's get_accessible_queryset()'s job. This only answers
-    "is this endpoint reachable at all for this user".
+    Says nothing about which objects are accessible — see `get_accessible_queryset()`.
     """
     if not user or not user.is_active:
         return False
@@ -51,24 +44,9 @@ def check_access(
     action: str,
     obj_owner_id: int | None = None,
 ) -> bool:
-    """
-    Object-level RBAC check. Returns True if user may perform action on
-    a SPECIFIC object (or on the resource generally for create).
+    """Object-level check; algorithm in docs/rbac-schema.md.
 
-    Args:
-        user:         the requesting User instance
-        resource:     resource string — "task", "project", "user", "role", "access_rule"
-        action:       "read" | "create" | "update" | "delete"
-        obj_owner_id: pk of the object's owner, if known (for ownership checks)
-
-    Logic:
-        - create: checks can_create only (no ownership concept)
-        - read/update/delete: checks can_{action}_all first (global access),
-          then can_{action} if obj_owner_id == user.id (own objects only)
-
-    Note: for list/create endpoints without a specific object, use
-    has_any_access() instead — this function requires obj_owner_id to
-    grant own-object access.
+    Own-object access needs `obj_owner_id`. For list/create without an object use `has_any_access()`.
     """
     if not user or not user.is_active:
         return False
@@ -114,20 +92,9 @@ def check_access(
 
 
 def get_accessible_queryset(user, resource: str, action: str, queryset):
-    """
-    Filter a queryset according to the user's AccessRule flags for
-    (resource, action).
+    """Rows the user may `action`: all with `_all`, own (`owner=user`) with the plain flag, else none.
 
-    Returns:
-        - the full queryset if the user has can_{action}_all
-        - queryset filtered to owner=user if the user has can_{action} only
-        - an empty queryset if neither flag is granted
-
-    Assumes the queryset's model has an `owner` FK to AUTH_USER_MODEL.
-    Mirrors the precedence in check_access(): _all wins over own.
-
-    Typically called AFTER has_any_access() has already gated the request
-    at has_permission() — this function narrows WHICH rows are visible.
+    Assumes an `owner` FK. Same precedence as `check_access()`.
     """
     if not user or not user.is_active:
         return queryset.none()
@@ -163,17 +130,9 @@ def _empty_capabilities() -> dict:
 
 
 def get_user_capabilities(user) -> dict:
-    """
-    Merged (OR'd across all of the user's roles) AccessRule flags per
-    resource — the same underlying data has_any_access()/check_access()
-    query, just exposed as a read-only view of "what can I do" rather
-    than a permission gate. Used by GET /api/users/me/capabilities/ so
-    the frontend can derive its own UI visibility without needing to
-    know role names (see that endpoint's docstring for the full
-    rationale — avoids duplicating RBAC precedence logic client-side).
+    """AccessRule flags per resource, OR-merged across the user's roles.
 
-    Uses Postgres's BOOL_OR aggregate to merge across roles in a
-    single query rather than iterating roles in Python.
+    Lets clients gate UI without duplicating the precedence logic. One query via Postgres BOOL_OR.
     """
     result = {resource: _empty_capabilities() for resource, _ in AccessRule.RESOURCE_CHOICES}
 
@@ -205,55 +164,16 @@ def get_user_capabilities(user) -> dict:
 
 
 class RBACPermission(BasePermission):
-    """
-    DRF permission class that enforces the custom RBAC system.
+    """DRF permission enforcing the custom RBAC (docs/rbac-schema.md).
 
-    Views that use this class must declare:
-        rbac_resource = "task"           # which resource is being accessed
-        rbac_action   = "read"           # which action is being performed,
-                                          # or "auto" to derive from HTTP method
-
-    Two-layer enforcement:
-        - has_permission(): endpoint-level gate via has_any_access().
-          "Can this user reach this endpoint at all?"
-        - has_object_permission(): object-level check via check_access(),
-          using the object's owner_id for ownership-aware decisions.
-
-    For list endpoints, views should additionally call
-    get_accessible_queryset() to filter rows — has_permission() alone
-    does not restrict to "own" objects.
-
-    Usage:
-        class TaskListView(APIView):
-            permission_classes = [IsAuthenticated, RBACPermission]
-            rbac_resource = "task"
-            rbac_action = "auto"
-
-            def get(self, request):
-                qs = get_accessible_queryset(request.user, "task", "read", Task.objects.all())
-                ...
-
-        class TaskDetailView(APIView):
-            permission_classes = [IsAuthenticated, RBACPermission]
-            rbac_resource = "task"
-            rbac_action = "auto"
-
-            def get_rbac_owner_id(self, request, **kwargs):
-                task = Task.objects.get(pk=self.kwargs["pk"])
-                return task.owner_id
+    Views set `rbac_resource` and `rbac_action` ("auto" = from the HTTP method). List views must
+    also narrow rows with `get_accessible_queryset()`; detail views get the owner from
+    `get_rbac_owner_id()` or `obj.owner_id`.
     """
 
     message = "You do not have permission to perform this action."
 
     def has_permission(self, request: Request, view: APIView) -> bool:
-        """
-        Called on every request before the view runs.
-
-        Endpoint-level gate: does the user have ANY can_{action} or
-        can_{action}_all flag for this resource? Does not check ownership —
-        that's handled by get_accessible_queryset() (lists) or
-        has_object_permission() (detail views).
-        """
         resource = getattr(view, "rbac_resource", None)
         action = getattr(view, "rbac_action", None)
 
@@ -277,10 +197,6 @@ class RBACPermission(BasePermission):
         return result
 
     def has_object_permission(self, request: Request, view: APIView, obj) -> bool:
-        """
-        Called after has_permission when accessing a specific object.
-        Passes the object's owner_id for ownership-aware checks via check_access().
-        """
         resource = getattr(view, "rbac_resource", None)
         action = getattr(view, "rbac_action", None)
 
@@ -300,8 +216,6 @@ class RBACPermission(BasePermission):
             )
 
         return result
-
-    # --- Helpers ---
 
     @staticmethod
     def _method_to_action(method: str) -> str:

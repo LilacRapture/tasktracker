@@ -1,19 +1,9 @@
-import logging
-
-from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from .models import AccessRule, Role, UserRole
 
-User = get_user_model()
-logger = logging.getLogger(__name__)
-
 
 class AccessRuleSerializer(serializers.ModelSerializer):
-    """
-    Serializes AccessRule — the boolean permission flags for a role+resource pair.
-    """
-
     class Meta:
         model = AccessRule
         fields = [
@@ -30,10 +20,6 @@ class AccessRuleSerializer(serializers.ModelSerializer):
 
 
 class RoleSerializer(serializers.ModelSerializer):
-    """
-    Full role representation including its access rules.
-    """
-
     access_rules = AccessRuleSerializer(many=True, read_only=True)
 
     class Meta:
@@ -43,9 +29,7 @@ class RoleSerializer(serializers.ModelSerializer):
 
 
 class RoleCreateUpdateSerializer(serializers.ModelSerializer):
-    """
-    Used for creating and updating roles (without nested access_rules).
-    """
+    """Write serializer; access rules are managed through their own endpoints."""
 
     class Meta:
         model = Role
@@ -54,10 +38,7 @@ class RoleCreateUpdateSerializer(serializers.ModelSerializer):
 
 
 class AccessRuleCreateUpdateSerializer(serializers.ModelSerializer):
-    """
-    Used for creating or updating an AccessRule for a role+resource pair.
-    role is set by the view from the URL, not from request body.
-    """
+    """`role` is set by the view from the URL, not from the request body."""
 
     class Meta:
         model = AccessRule
@@ -74,11 +55,6 @@ class AccessRuleCreateUpdateSerializer(serializers.ModelSerializer):
 
 
 class UserRoleSerializer(serializers.ModelSerializer):
-    """
-    Represents a role assignment for a user.
-    Used for GET /users/{id}/roles/
-    """
-
     role_name = serializers.CharField(source="role.name", read_only=True)
     assigned_by_email = serializers.CharField(
         source="assigned_by.email", read_only=True, default=None
@@ -91,11 +67,9 @@ class UserRoleSerializer(serializers.ModelSerializer):
 
 
 class AssignRoleSerializer(serializers.Serializer):
-    """
-    Used for POST /users/{id}/roles/ — assign a role to a user.
-    Accepts role_id, validates it exists, checks for duplicates.
-    """
+    """Assigns a role to a user; unknown roles and duplicates are rejected."""
 
+    # Needs `user` in the serializer context.
     role_id = serializers.IntegerField()
 
     def validate_role_id(self, value: int) -> int:

@@ -1,16 +1,9 @@
-import logging
-
 from django.conf import settings
 from django.db import models
 
-logger = logging.getLogger(__name__)
-
 
 class Role(models.Model):
-    """
-    Named group that bundles access rules.
-    Examples: admin, manager, developer, viewer.
-    """
+    """Named bundle of access rules."""
 
     name = models.CharField(max_length=50, unique=True)
     description = models.TextField(blank=True, default="")
@@ -27,10 +20,7 @@ class Role(models.Model):
 
 
 class UserRole(models.Model):
-    """
-    Which roles a user has. Many-to-many with audit fields.
-    A user can have multiple roles simultaneously.
-    """
+    """A role assigned to a user; a user may hold several."""
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -56,7 +46,6 @@ class UserRole(models.Model):
         db_table = "rbac_userrole"
         verbose_name = "User Role"
         verbose_name_plural = "User Roles"
-        # One user can't have the same role twice
         unique_together = [("user", "role")]
 
     def __str__(self) -> str:
@@ -64,15 +53,7 @@ class UserRole(models.Model):
 
 
 class AccessRule(models.Model):
-    """
-    One row = one role's permissions on one resource.
-
-    Ownership-aware: _all flags apply to any object of this resource,
-    plain flags apply only when the requesting user owns the object
-    (i.e. obj.owner_id == request.user.id).
-
-    Unique constraint: (role, resource) — one rule set per role per resource.
-    """
+    """One role's permission flags on one resource. Flag semantics: docs/rbac-schema.md."""
 
     RESOURCE_CHOICES = [
         ("task", "Task"),
@@ -89,7 +70,6 @@ class AccessRule(models.Model):
     )
     resource = models.CharField(max_length=50, choices=RESOURCE_CHOICES)
 
-    # Read
     can_read = models.BooleanField(
         default=False,
         help_text="Can read objects owned by self.",
@@ -98,14 +78,10 @@ class AccessRule(models.Model):
         default=False,
         help_text="Can read any object of this resource.",
     )
-
-    # Create
     can_create = models.BooleanField(
         default=False,
         help_text="Can create new objects of this resource.",
     )
-
-    # Update
     can_update = models.BooleanField(
         default=False,
         help_text="Can update objects owned by self.",
@@ -114,8 +90,6 @@ class AccessRule(models.Model):
         default=False,
         help_text="Can update any object of this resource.",
     )
-
-    # Delete
     can_delete = models.BooleanField(
         default=False,
         help_text="Can delete objects owned by self.",
@@ -129,7 +103,6 @@ class AccessRule(models.Model):
         db_table = "rbac_accessrule"
         verbose_name = "Access Rule"
         verbose_name_plural = "Access Rules"
-        # One rule set per role per resource — no duplicates
         unique_together = [("role", "resource")]
 
     def __str__(self) -> str:
