@@ -13,8 +13,6 @@ logger = logging.getLogger(__name__)
 
 
 class OwnerBriefSerializer(serializers.ModelSerializer):
-    """Minimal user representation nested inside Task responses."""
-
     full_name = serializers.CharField(read_only=True)
 
     class Meta:
@@ -23,19 +21,12 @@ class OwnerBriefSerializer(serializers.ModelSerializer):
 
 
 class ProjectBriefSerializer(serializers.ModelSerializer):
-    """Minimal project representation nested inside Task responses."""
-
     class Meta:
         model = Project
         fields = ["id", "name"]
 
 
 class TaskSerializer(serializers.ModelSerializer):
-    """
-    Read serializer for tasks. Nests owner and project as brief objects.
-    Use TaskWriteSerializer for create/update.
-    """
-
     owner = OwnerBriefSerializer(read_only=True)
     project = ProjectBriefSerializer(read_only=True)
 
@@ -56,11 +47,7 @@ class TaskSerializer(serializers.ModelSerializer):
 
 
 class TaskWriteSerializer(serializers.ModelSerializer):
-    """
-    Write serializer for create/update. `project` accepts a project id
-    (or null). `owner` is set by the view from request.user — not
-    accepted from the client.
-    """
+    """Create/update payload. `project` is an id or null; `owner` is always the caller."""
 
     project = serializers.PrimaryKeyRelatedField(
         queryset=Project.objects.all(),
@@ -92,4 +79,3 @@ class TaskWriteSerializer(serializers.ModelSerializer):
         logger.info("Task updated: %s (id=%s)", instance.title, instance.pk)
         broadcast_task_event(instance, "task.updated")
         return instance
-        

@@ -18,16 +18,13 @@ logger = logging.getLogger(__name__)
 
 
 class ProjectListView(generics.ListCreateAPIView):
-    """
-    GET  /api/projects/  — list projects accessible to the user (paginated)
-    POST /api/projects/  — create a new project (owner = caller)
-    """
+    """List the projects you can read, or create a project (you become its owner)."""
 
     permission_classes = [IsAuthenticated, RBACPermission]
     rbac_resource = "project"
     rbac_action = "auto"
     serializer_class = ProjectSerializer
-    
+
     filterset_class = ProjectFilter
     search_fields = ["name", "description"]
     ordering_fields = ["created_at", "updated_at", "name", "status"]
@@ -43,11 +40,7 @@ class ProjectListView(generics.ListCreateAPIView):
 
 
 class ProjectDetailView(APIView):
-    """
-    GET    /api/projects/{id}/  — project detail
-    PATCH  /api/projects/{id}/  — update project
-    DELETE /api/projects/{id}/  — delete project
-    """
+    """Retrieve, update, or delete a project."""
 
     permission_classes = [IsAuthenticated, RBACPermission]
     rbac_resource = "project"
@@ -63,14 +56,14 @@ class ProjectDetailView(APIView):
             return None
         self.check_object_permissions(request, obj)
         return obj
-    
+
     @extend_schema(responses={200: ProjectSerializer, 404: ErrorResponseSerializer})
     def get(self, request: Request, pk: int) -> Response:
         obj = self._get_object(request, pk)
         if obj is None:
             return Response({"error": "Not found"}, status=status.HTTP_404_NOT_FOUND)
         return Response(ProjectSerializer(obj).data)
-    
+
     @extend_schema(
         request=ProjectSerializer,
         responses={200: ProjectSerializer, 404: ErrorResponseSerializer},
@@ -83,7 +76,7 @@ class ProjectDetailView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(ProjectSerializer(obj).data)
-    
+
     @extend_schema(responses={204: None, 404: ErrorResponseSerializer})
     def delete(self, request: Request, pk: int) -> Response:
         obj = self._get_object(request, pk)
@@ -91,4 +84,3 @@ class ProjectDetailView(APIView):
             return Response({"error": "Not found"}, status=status.HTTP_404_NOT_FOUND)
         obj.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-        

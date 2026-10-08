@@ -1,9 +1,5 @@
-import logging
-
 from django.conf import settings
 from django.db import models
-
-logger = logging.getLogger(__name__)
 
 
 class Project(models.Model):
@@ -35,4 +31,3 @@ class Project(models.Model):
 
     def __str__(self) -> str:
         return self.name
-        

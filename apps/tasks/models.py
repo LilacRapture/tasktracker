@@ -1,9 +1,5 @@
-import logging
-
 from django.conf import settings
 from django.db import models
-
-logger = logging.getLogger(__name__)
 
 
 class Task(models.Model):
@@ -42,4 +38,3 @@ class Task(models.Model):
 
     def __str__(self) -> str:
         return self.title
-        

@@ -1,5 +1,3 @@
-import logging
-
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
@@ -15,14 +13,9 @@ from .filters import TaskFilter
 from .models import Task
 from .serializers import TaskSerializer, TaskWriteSerializer
 
-logger = logging.getLogger(__name__)
-
 
 class TaskListView(generics.ListCreateAPIView):
-    """
-    GET  /api/tasks/  — list tasks accessible to the user (paginated)
-    POST /api/tasks/  — create a new task (owner = caller)
-    """
+    """List the tasks you can read, or create a task (you become its owner)."""
 
     permission_classes = [IsAuthenticated, RBACPermission]
     rbac_resource = "task"
@@ -53,11 +46,7 @@ class TaskListView(generics.ListCreateAPIView):
 
 
 class TaskDetailView(APIView):
-    """
-    GET    /api/tasks/{id}/  — task detail
-    PATCH  /api/tasks/{id}/  — update task
-    DELETE /api/tasks/{id}/  — delete task
-    """
+    """Retrieve, update, or delete a task."""
 
     permission_classes = [IsAuthenticated, RBACPermission]
     rbac_resource = "task"
@@ -104,4 +93,3 @@ class TaskDetailView(APIView):
         broadcast_task_event(obj, "task.deleted")  # before .delete() — need owner_id/id still populated
         obj.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-        
