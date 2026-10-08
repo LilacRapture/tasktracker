@@ -72,7 +72,7 @@ class TaskDetailView(APIView):
 
     @extend_schema(
         request=TaskWriteSerializer,
-        responses={200: TaskSerializer, 400: ErrorResponseSerializer},
+        responses={200: TaskSerializer, 404: ErrorResponseSerializer},
     )
     def patch(self, request: Request, pk: int) -> Response:
         obj = self._get_object(request, pk)
