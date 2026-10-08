@@ -12,14 +12,9 @@ TICKET_CACHE_PREFIX = "ws_ticket:"
 
 
 class TicketAuthMiddleware:
-    """
-    ASGI middleware for the websocket protocol only. Reads a one-time
-    ticket from the connection's query string, resolves it to a user
-    via the shared Redis-backed cache (same store used to issue
-    tickets in apps/auth_core/views.py), and deletes it atomically so
-    it cannot be reused. Rejects the connection (scope["user"] = None)
-    on any missing/invalid/expired ticket — consumers are responsible
-    for closing the connection if scope["user"] is None.
+    """Websocket only: resolves the one-time `?ticket=` to `scope["user"]`, or None if invalid.
+
+    The consumer closes the connection when `scope["user"]` is None.
     """
 
     def __init__(self, inner):
@@ -37,17 +32,15 @@ class TicketAuthMiddleware:
 
     @database_sync_to_async
     def _resolve_ticket(self, ticket: str):
-        cache = caches["default"]  # configured to point at Redis, see settings.py
+        cache = caches["default"]
         key = f"{TICKET_CACHE_PREFIX}{ticket}"
         user_id = cache.get(key)
         if user_id is None:
             logger.info("WS ticket invalid or expired")
             return None
 
-        cache.delete(key)  # one-time use — not perfectly atomic with .get(),
-        # acceptable race window is a concurrent double-connect within
-        # the same ~ms, not a realistic attack surface for a portfolio project.
-        # Revisit with a Lua GETDEL script if this ever needs to be airtight.
+        # Not atomic with get(): a concurrent double-connect could slip through (accepted, ADR-014).
+        cache.delete(key)
 
         try:
             return User.objects.get(pk=user_id, is_active=True)

@@ -1,9 +1,5 @@
 """
-Tests for presence behavior in TaskTrackerConsumer:
-- user_joined/user_left broadcast to all connected users (unscoped —
-  presence itself isn't RBAC content)
-- editing_started/editing_stopped are RBAC-scoped like task events,
-  reusing _users_with_task_access
+Presence events: joined/left reach every connected user; editing events are RBAC-scoped (ADR-016).
 """
 import uuid
 
@@ -97,9 +93,6 @@ async def test_editing_started_reaches_user_with_read_all_access(developer_user,
     editor = await _connect_as(developer_user)
     observer = await _connect_as(admin_user)
 
-    # drain observer's own presence.joined-from-editor event ordering
-    # isn't guaranteed relative to connect, so drain any presence event
-    # first before asserting on the editing event specifically.
     await editor.send_json_to({
         "type": "presence.editing_started",
         "payload": {"task_id": task.id},
@@ -141,8 +134,7 @@ async def test_editing_started_for_nonexistent_task_is_ignored(developer_user):
         "payload": {"task_id": 999999},
     })
 
-    # No crash, no event — nothing to assert on the sender itself beyond
-    # "connection stays alive", proven by being able to disconnect cleanly.
+    # A clean disconnect below proves the connection survived.
     assert await editor.receive_nothing(timeout=0.5) is True
 
     await _disconnect(editor)

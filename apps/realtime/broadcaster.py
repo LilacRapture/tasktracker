@@ -13,22 +13,10 @@ PROTOCOL_VERSION = 1
 
 
 def _users_with_task_access(task: Task) -> list:
-    """
-    All active users who can currently read this task.
+    """Active users who can read the task: `can_read_all` holders, plus the owner with `can_read`.
 
-    Mirrors check_access()'s precedence for the "read" action on the
-    "task" resource (see docs/rbac-schema.md): can_read_all grants
-    access regardless of ownership; can_read only grants access to the
-    task's own owner. Computed as two set-based queries rather than
-    iterating every active user and calling check_access() per user —
-    that approach was O(2N+1) queries (N = active user count); this is
-    O(1) regardless of user count.
-
-    Deliberately duplicates the precedence rule rather than reusing
-    check_access() directly — the tradeoff is a second place to keep in
-    sync with docs/rbac-schema.md if the RBAC schema ever grows a third
-    access tier, in exchange for avoiding per-user query overhead on
-    every task write.
+    Deliberately duplicates `check_access()`'s read precedence to stay at two queries instead
+    of one per user — keep in sync with it (ADR-015).
     """
     read_all_user_ids = set(
         User.objects.filter(
@@ -50,11 +38,7 @@ def _users_with_task_access(task: Task) -> list:
 
 
 def broadcast_task_event(task: Task, event_type: str) -> None:
-    """
-    Sends a task.{created,updated,deleted} envelope to every user
-    currently allowed to read this task, via their personal
-    user_{id} channel group (see ADR-014).
-    """
+    """Send a task.{created,updated,deleted} envelope to every user who can read the task."""
     channel_layer = get_channel_layer()
     envelope = {
         "v": PROTOCOL_VERSION,
@@ -82,13 +66,7 @@ def broadcast_task_event(task: Task, event_type: str) -> None:
 
 
 def broadcast_presence_editing_event(task: Task, editing_user, event_type: str) -> None:
-    """
-    Sends a presence.editing_started/editing_stopped envelope to every
-    user who can read this task — same recipient set as
-    broadcast_task_event, since revealing that someone is editing a
-    specific task also reveals the task's existence, which is
-    task-level RBAC content, not bare presence.
-    """
+    """Send presence.editing_* to the same recipients as task events: it reveals the task, so it's RBAC-scoped."""
     channel_layer = get_channel_layer()
     envelope = {
         "v": PROTOCOL_VERSION,

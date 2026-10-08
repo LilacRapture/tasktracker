@@ -1,12 +1,5 @@
 """
-Tests for apps/realtime/broadcaster.py.
-
-Split into two groups:
-- _users_with_task_access: pure RBAC recipient computation, no channel
-  layer involved at all.
-- broadcast_task_event: full WS round-trip via InMemoryChannelLayer
-  (see apps/realtime/tests/conftest.py's autouse fixture), proving the
-  envelope actually reaches a subscribed user's personal group.
+Recipient computation (pure RBAC) and the WS round-trip via InMemoryChannelLayer (see conftest.py).
 """
 import pytest
 from channels.db import database_sync_to_async
@@ -135,11 +128,7 @@ async def test_broadcast_does_not_reach_user_without_task_access(developer_user,
     task = await database_sync_to_async(Task.objects.create)(title="Test task", owner=developer_user)
     await database_sync_to_async(broadcast_task_event)(task, "task.created")
 
-    # receive_nothing() is purpose-built for "assert nothing arrived" —
-    # unlike wrapping receive_json_from() in pytest.raises(TimeoutError),
-    # it doesn't risk cancelling the communicator's underlying
-    # application task as a side effect, which was leaving self.future
-    # in a cancelled state before the subsequent disconnect() call.
+    # receive_nothing() rather than pytest.raises(TimeoutError): the latter can cancel the communicator's app task and break the later disconnect().
     assert await communicator.receive_nothing(timeout=0.5) is True
 
     await communicator.disconnect()
