@@ -4,12 +4,11 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.contrib.auth import get_user_model
 
+from apps.realtime.protocol import PROTOCOL_VERSION
 from apps.tasks.models import Task
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
-
-PROTOCOL_VERSION = 1
 
 
 def _users_with_task_access(task: Task) -> list:

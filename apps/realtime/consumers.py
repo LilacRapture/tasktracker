@@ -5,10 +5,9 @@ from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
 from apps.rbac.permissions import check_access
 from apps.realtime.broadcaster import broadcast_presence_editing_event
+from apps.realtime.protocol import PROTOCOL_VERSION
 
 logger = logging.getLogger(__name__)
-
-PROTOCOL_VERSION = 1
 
 # Joined/left go to every connected user, unscoped: bare presence isn't task content.
 # Editing events reveal a task, so they're RBAC-scoped (see broadcaster.py).
